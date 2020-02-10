@@ -1,0 +1,31 @@
+package MovingLabelBox;
+
+public class LabelBox extends CompositeShape {
+  left = 10;
+  top = 20;
+  width = formula label.width + 10;
+  height = formula label.height + 10;
+  String value = "foo";
+
+  part frame extends RectangleShape {
+    left = 0;
+    top = 0;
+    width = formula parent.width;
+    height = formula parent.height;
+  }
+
+  part label extends TextShape {
+    left = 5;
+    top = 5;
+    text = formula parent.value;
+  }
+
+  begin java
+    LabelBox(String v, int l, int t) {
+      setValue(v);
+      setLeft(l);
+      setTop(t);
+    }
+  end java
+
+}

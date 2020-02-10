@@ -1,0 +1,86 @@
+<pre>
+Initial Visual Appearance                                          20 points
+
+    There are two panels with the top panel		    2
+       being the rotate panel and the bottom
+       panel being the thermometer panel
+
+    There is a horizontal line in the rotate                2
+       panel and a label next to it that reads
+       0
+
+    5 labels evenly spaced and correctly labeled            3
+
+    Control handle at the top of the mercury                2
+
+    Thermometer centered and occupies 3/4 of the screen     2
+       when application is initially displayed
+
+    Temperature label centered next to the top              3
+       of the mercury and displays the correct value
+
+    Frame appears to be 1/15 as wide as it is tall          2
+
+    Bulb diameter appears to be three times the frame	    2
+       width
+
+    Stem appears to be 1/10 the height of the metered       2
+       segment
+
+ Interaction                                                       50 points
+
+    Eight selection handles appear when the left mouse      2
+       button is pressed while the mouse cursor is
+       inside the thermometer object
+
+    The selection handles disappear if the left mouse       2
+       button is pressed while the mouse cursor is
+       outside the thermometer object
+
+    Thermometer object is correctly scaled when each of     8
+       the selection handles is dragged
+
+    If the user drags the mouse cursor while it is in the   8
+        bounding box of the entire thermometer object and 
+	the left mouse button is down, then the thermometer 
+	moves with the mouse cursor.
+
+    The mercury moves correctly when the control handle     8
+        is dragged and the temperature label updates
+	appropriately (i.e., correct temperature and is
+	an integer) and stays centered with respect
+	to the mercury
+
+    Rotation
+
+        A red-filled, pie-shaped arc gets drawn out when    4
+	    the user drags with the left mouse button
+
+	The degrees label gets correctly updated and is     2
+	    displayed as an integer 
+
+	The thermometer object gets rotated correctly       8
+
+        Scaling and mercury manipulation work correctly     8
+	    after the thermometer object has been
+	    rotated
+
+Program Design	                                                    30 points
+
+    Area object used for the stem and bulb	         5
+
+    General path object used for the frame		 5
+
+    Text layout objects used for text labels and	 4
+        degree labels
+
+    Line2D objects used for tick marks                   3
+
+    Rectangle2D object used for mercury			 3
+    
+    Arc2D object used for pie-shaped arc in              5
+        rotate panel
+
+    AffineTransforms are used to perform translation,    5
+        scaling, and rotation
+</pre>

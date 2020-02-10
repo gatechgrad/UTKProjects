@@ -1,0 +1,51 @@
+package silhouette.constraints;
+
+import java.awt.*;
+import java.awt.Color.*;
+import java.awt.event.*;
+import java.util.*;
+
+import silhouette.shapes.*;
+import silhouette.interactors.*;
+
+import javax.swing.*;
+import graphplace.*;
+
+
+public class PopMenu extends SilInteractor implements ActionListener {
+
+  property itsProperty;   // the property the constraint graph represents
+
+  constraintDebugger debugger = new constraintDebugger();
+  public PopMenu(property p) {
+    	super();
+        itsProperty = p;
+    }
+
+  public void mousePressed(MouseEvent me){
+     // if there's a right mouse key click, show up a popup menu
+     if((me.getModifiers() & MouseEvent.BUTTON3_MASK) != 0) {
+
+	JPopupMenu popup = new JPopupMenu();
+    	JMenuItem  menuItem = new JMenuItem("Show Constraints Graph");
+    	popup.add(menuItem);
+        menuItem.addActionListener(this);
+        popup.show(me.getComponent(),
+                           me.getX(), me.getY());
+        if(itsProperty.getConstraints() == null) {
+          menuItem.setEnabled(false);
+        }
+      }
+   }
+
+
+
+
+  
+    public void actionPerformed(ActionEvent e) {
+       debugger.drawConstraintGraph(itsProperty);
+      }
+}
+
+
+

@@ -1,0 +1,20 @@
+package MovingLabelBox;
+
+import silhouette.shapes.*;
+
+public class arrowLine extends SilArrowLine {
+  x1 = pformula attachX1ToRight(fromObj);
+  y1 = pformula attachY1ToCenter(fromObj);
+  x2 = pformula attachX2ToLeft(toObj);
+  y2 = pformula attachY2ToCenter(toObj);
+  BoxShape fromObj = null;
+  BoxShape toObj = null;
+
+  begin java
+    arrowLine(BoxShape from, BoxShape to) {
+      setFromObj(from);
+      setToObj(to);
+    }
+  end java
+
+}

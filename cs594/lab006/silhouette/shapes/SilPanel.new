@@ -1,0 +1,131 @@
+package silhouette.shapes;
+
+import java.awt.*;
+import javax.swing.*;
+import java.awt.geom.*;
+import java.awt.event.*;
+import java.util.*;
+import silhouette.shapes.*;
+import silhouette.constraints.*;
+
+/**
+ * SilPanel extends JPanel to let SilCanvas to be attached to,
+ * it itself should be added to componentPane.
+ */
+public class SilPanel extends JPanel {
+ 
+  // SilCanvas that attached to this SilPanel
+  CanvasShape topCanvas;
+  
+  public static final int ApplicationWindow = -1; // default window type
+  
+  public static final int DebugWindow = -2;
+  
+  public static final int InspectorWindow = -3;
+
+  int windowType = ApplicationWindow;
+  
+  public SilPanel(CanvasShape canvas1) {
+  	super();
+  	topCanvas = canvas1;
+	setPreferredSize(new Dimension((int)topCanvas.getWidth(),
+				       (int)topCanvas.getHeight()));
+
+	addComponentListener(new ComponentAdapter() {
+		public void componentResized(ComponentEvent e) {
+		    if (topCanvas != null) {
+			topCanvas.panelResize(getSize());
+		    }
+		}
+	    });
+  }
+
+  public CanvasShape getCanvas() {
+      return topCanvas;
+  }
+
+ /**
+   * Draws the shapes that have been registered with the canvas by
+   * calling the display manager that has been registered with the
+   * canvas. paintComponent first calls its superclass method so that
+   * any Swing components that have been added to the canvas get
+   * drawn.
+   */
+  public void paintComponent(Graphics g) {
+    //System.out.println("enter silpanel's paintComponent");
+    if(this.getWindowType() == ApplicationWindow) {
+    	System.out.println("Application window call paintComponent");
+    }
+    else if(this.getWindowType() == DebugWindow) {
+        System.out.println("Debug  window call paintComponent");
+    }
+    else if(this.getWindowType() == InspectorWindow) {
+	System.out.println("Inpector  window call paintComponent");
+   }
+
+    System.out.println("1111111111111111111111111111111111111111");
+    if(getWindowType() == ApplicationWindow) {
+    // force evaluation of all constraints on the constraint queue
+    	if (constraintDebugger.getState() == constraintDebugger.STOP){
+	       /* if(!constraintDebugger.panelList.contains(this)) {
+			constraintDebugger.panelList.addLast(this);
+		}*/	
+/*		if(!constraint.evalQueue.isEmpty()){
+			System.out.println("constraint.Evaluate() called");
+	 		constraint.Evaluate();
+                	System.out.println("continuing to paint after constraint evaluation");
+    			if(isVisible())
+				topCanvas.getDisplay().display(g2);
+			ListIterator iter = constraintDebugger.panelList.listIterator();
+			while(iter.hasNext()) {
+			 	SilPanel panel = (SilPanel)iter.next();
+			 	iter.remove();
+			 	panel.repaint();
+			}	 
+			 	
+			return;
+		}else {
+			if (isVisible())
+			      topCanvas.getDisplay().display(g2);
+			return;
+		}	      
+	}
+	else {
+	        if(!constraintDebugger.panelList.contains(this)) {
+		
+			constraintDebugger.panelList.addLast(this);
+			return;
+		}*/	
+	constraint.Evaluate();
+	}
+    }	
+	
+			    
+    super.paintComponent(g);
+
+    Graphics2D g2 = (Graphics2D)g;
+    // save the latest version of the font render context
+    TextShape.setFontStats(g2.getFontRenderContext());
+
+    if ((topCanvas.getWidth() != super.getWidth()) ||
+      (topCanvas.getHeight() != super.getHeight()) ){
+      setPreferredSize(new Dimension((int)topCanvas.getWidth(),
+                                    (int)topCanvas.getHeight()));
+    }
+    
+    if (isVisible())
+      topCanvas.getDisplay().display(g2);
+
+      
+    System.out.println("paintcomponent() of silpanel finishes");
+  }
+
+  public void setWindowType(int type) {
+  	windowType = type;
+  }
+
+  public int getWindowType() {
+  	return windowType;
+  }	
+
+}

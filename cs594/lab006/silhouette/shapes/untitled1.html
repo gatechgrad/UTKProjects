@@ -1,0 +1,148 @@
+<HTML>
+<HEAD>
+<META HTTP-EQUIV="Content-Type" CONTENT="text/html; charset=windows-1252">
+<TITLE>
+The Title
+</TITLE>
+</HEAD>
+<BODY>
+The interactors package implements event-handling for Silhouette. Event-handling
+for components is relatively simple since normally a component only implements
+a few types of behaviors. For example, a button component implements a push
+and release behavior. In contrast, a canvas with many custom graphical objects
+may have to support a large number of behaviors, such as move/resize behaviors,
+selection behaviors, and text editing behaviors. In such a situation, it becomes
+much more difficult for a programmer to control the event-handling by writing
+listener procedures. If the programmer tries to write just one listener, then
+it has to deal with multiple behaviors. If the programmer tries to write
+one listener for each behavior, then the programmer has to make sure that
+a listener does not operate on an event that another listener wants.
+<p>
+For these reasons Silhouette uses the interactor model to implement behaviors.
+Each interactor is responsible for implementing a single behavior.
+Interactors implement the mouse listener, mouse motion listener, and
+key listener interfaces, so a programmer can create an entire behavior
+by overriding the appropriate methods in an interactor. Once an interactor
+starts executing, it receives all events from the Silhouette event-handler.
+An interactor stops executing by entering a STOP state. This state tells
+the Silhouette event-handler to stop sending events to the interactor and
+to reset the interactor's state to START. A more detailed description
+of interactors can be found by looking at the package documentation for
+interactors.
+<p>
+In keeping with the AWT's style of adding listeners to components, interactors
+are added to Silhouette objects. When an interactor is added to a
+Silhouette object (using the addInteractor method), the interactor will
+operate on that object. In order to conserve space, it is better to create
+one instance of an interactor and add it to multiple objects, rather than
+creating multiple instances of an interactor and adding one instance to each
+Silhouette object. For example, if there are 100 objects on a screen, it is
+better to create one instance of a move interactor and add this instance
+to each object then it is to create one instance of the move interactor for
+each object on the screen.
+<p>
+Silhouette implements an event-handler that acts as a traffic cop
+by distributing events to the appropriate interactor. When an interactor
+is executing, the event-handler distributes all the events to that
+interactor. If no interactor is executing, then Silhouette uses the
+following algorithm to determine which interactor gets the event:
+<ol>
+<li> If the event is a mouse listener event, the event handler determines which
+objects on the display contain the point at which the event occurred.
+The interactors associated with the topmost object get the first crack at
+the event. If none of the interactors wants to handle the event, then the
+interactors associated with the composite object to which the topmost object
+belongs gets a crack at the event. This passing of the event up the
+composite object hierarchy continues until the canvas is reached. The
+interactors attached to the canvas are asked if they want the event. If
+not the event goes unprocessed.
+<p>
+<li> If the event is a key event, then the interactors associated with
+  the canvas are asked to handle the event. If none of the interactors
+  wants the event, the event goes unprocessed.
+<p>
+<li> If the event is a mouse motion event, the event is ignored. The rationale
+  for ignoring such events is that many such events can get generated yet
+  a behavior is unlikely to start on such an event.
+</ol>
+<p>
+Two problems may seem apparent from the description of the above algorithm.
+First, how would an interactor handling a key event know to which object(s) the
+event should be applied? The answer is that each canvas keeps a list of
+selected objects that may be accessed via the getSelectedObjects method.
+Selection interactors can add or remove objects from this list, thus allowing
+an interactor that uses key events to determine the selected objects. The
+second problem is what the programmer should do if they want a behavior to
+start on a mousemotion event. The answer is that they can attach a
+mousemotion listener to the canvas. There is nothing to prevent a programmer
+from attaching listeners to a Silhouette canvas. These listeners will
+operate concurrently with the Silhouette event handler. In other words,
+both these listeners and the Silhouette event handler will get the event.
+That means that an interactor may consume the same event that one of the
+programmer's listeners is consuming. For this reason, it is best to try
+to implement a behavior as an interactor if at all possible.
+
+@see <a href="../SilInteractor.html">SilInteractor</a>
+
+<ul>
+<li> There is a single interactor handler for the whole silhouette system.
+  <ol>
+  <li> The interactor handler is responsible for handling all events that
+        are directed to the silhouette canvases.
+  <li> For each silhouette object, the interactor handler
+        maintains a list of interactors that operate on the object.
+  <li> When an interactor is added to an object, the object asks the
+        interactor handler to add the interactor to the object's interactor
+        list.
+  <li> When an object is deleted, it notifies the interactor handler so the
+        interactor handler can remove the object from the handler's data
+        structures.
+  <li> There are a number of reasons for having a single interactor handler
+        for the whole silhouette system rather than one handler per canvas:
+        <ol>
+        <li> An object does not have to be attached to a canvas in order
+                to attach interactors to the object.
+        <li> If an object is removed from a canvas, and then either re-added
+                to the canvas or added to another canvas, there is no need
+                to transfer the object's interactor list between handlers.
+                Further, if the object is not immediately re-connected to a
+                canvas, there is no need to find a way to temporarily store
+                its interactor list.
+        <li> When an interactor is added to a canvas, there is no need to
+                determine which canvas the object belongs to (not a big
+                problem since we can simply chase parent pointers until we
+                locate a canvas).
+        </ol>
+  </ol>
+<li> When an event occurs, the interactor handler gets a stack of objects
+        that contain the event.
+        <ol>
+        <li> The interactor handler then retrieves each object's
+             list of interactors and determines whether any of the interactors
+             handle the event.
+        <li> If none of the interactors handle the event, the
+             next object on the stack is tried.
+        <li> An interactor handles the event by changing its state from start
+             to some other state.
+        <li> When the interactor is done, it sets its state to stop. The
+             interactor handler resets the state to start.
+        <li> When an interactor is handling events, it gets exclusive access
+             to the events.
+        </ol>
+<li> An interactor implements the MouseListener, MouseMotionListener, and
+      KeyListener interfaces. The rationale for this design
+        is that interactors will allow us to create behaviors that involve
+        multiple events and that must be handled by multiple adapter classes
+        (e.g., a move behavior). An interactor does not have to support all
+        of the AWT's event classes since it is only meant to handle input
+        events. Hence an interactor can restrict itself to implementing the
+        input listeners.
+<li> If the programmer wants to activate an interactor so that it starts
+      receiving all the input events, the programmer can call the
+      startInteractor method.
+<li> Each canvas has a variable called selectedObjects which an interactor
+      can use to find the selected objects on that canvas.
+</ul>
+</BODY>
+</HTML>
+ 

@@ -1,0 +1,4 @@
+1. Create an AWTListener to handle the F1 key for the inspector.
+2. Create a command that makes it easier to attach CanvasShapes to
+	Java containers.
+

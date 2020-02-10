@@ -1,0 +1,115 @@
+package silhouette.interactors;
+
+import java.awt.*;
+import javax.swing.*;
+import java.awt.event.*;
+import silhouette.shapes.*;
+import java.awt.geom.*;
+
+/**
+ * This application records how many times the mouse cursor hits a
+ * line
+ */
+public class testInter extends JFrame {
+
+  private CanvasShape lineCanvas;
+  private CanvasShape textCanvas;
+  JFrame textFrame = new JFrame();
+
+  public testInter() {
+    lineCanvas = new CanvasShape();
+    textCanvas = new CanvasShape();
+
+    lineCanvas.addInteractor(new SilInteractor() {
+      SilMouseEvent startEvent = new SilMouseEvent(MouseEvent.MOUSE_PRESSED,
+						   InputEvent.BUTTON1_MASK);
+      SilMouseEvent stopEvent = new SilMouseEvent(MouseEvent.MOUSE_RELEASED,
+						  InputEvent.BUTTON1_MASK);
+      int hitCount = 0;
+      int missCount = 0;
+
+      // Determine whether a mouse press lies near the line. If it does,
+      // increment the hit count; otherwise increment the miss count.
+
+      public void mousePressed(MouseEvent event) {
+	  if (startEvent.equals(event))
+	      System.out.println("Start event received");
+
+	  if (stopEvent.equals(event))
+	      System.out.println("Stop event received");
+
+	      CanvasShape lineCanvas = ((SilPanel)event.getSource()).getCanvas();
+	      LineShape line = (LineShape)lineCanvas.getShape("Linebox");
+	      if (line.contains(event.getX(), event.getY())) {
+	        TextShape text = (TextShape)textCanvas.getShape("Hitbox");
+	        hitCount++;
+
+	        // update the hit count label
+	        text.setText(String.valueOf(hitCount));
+	      }
+	      else {
+	        TextShape text = (TextShape)textCanvas.getShape("Missbox");
+	        missCount++;
+
+	        // update the miss count label
+	        text.setText(String.valueOf(missCount));
+	      }
+	      this.setState(SilInteractor.STOP);
+      }
+    });
+
+    getContentPane().add (lineCanvas.getSilPanel());
+    this.setTitle("testInter");
+    lineCanvas.setFillColor(Color.white);
+
+    // create the line
+    LineShape linebox = new LineShape();
+
+    lineCanvas.add(linebox, "Linebox");
+    linebox.setP1(new Point2D.Double(10, 60))
+      .setP2(new Point2D.Double(50,100));
+
+    linebox.setLineColor(Color.red);
+
+    // create the labels for the hit count
+    TextShape label = new TextShape(10, 10, "Hit Count: ");
+    textCanvas.add(label, "Labelbox");
+
+    // position the hit counter to the right of its label
+    TextShape hitLabel = new TextShape(0, 10, "0");
+    hitLabel.setLeft(label.getLeft() + label.getWidth() + 10);
+    textCanvas.add(hitLabel, "Hitbox");
+
+    // create the labels for the miss count
+    label = new TextShape(10, 30, "Miss Count: ");
+    textCanvas.add(label, "MissLabelbox");
+
+    // position the miss counter to the right of its label
+    TextShape missLabel = new TextShape(0, 30, "0");
+    missLabel.setLeft(label.getLeft() + label.getWidth() + 10);
+    textCanvas.add(missLabel, "Missbox");
+
+    addWindowListener(new WindowAdapter() {
+      public void windowClosing(WindowEvent event) {
+	      dispose();
+	      System.exit(0);
+      }
+    });
+
+    textFrame.getContentPane().add(textCanvas.getSilPanel());
+    textFrame.setTitle("TextFrame");
+    textCanvas.setFillColor(Color.white);
+    textFrame.setLocation(450, 0);
+    textFrame.pack();
+    textFrame.show();
+  }
+
+  public static void main(String argv[]) {
+
+    testInter mywindow = new testInter();
+
+    mywindow.pack();
+    mywindow.show();
+  }
+
+}

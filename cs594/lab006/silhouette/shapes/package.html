@@ -1,0 +1,40 @@
+<body>
+<p>
+The shapes package
+contains all of the classes for creating and displaying Silhouette 
+shapes.
+<p>
+The shapes package defines a number of types of objects that
+support the display of custom graphics. The Java2D graphics
+package also allows custom graphics to be displayed. However,
+the shapes package provides a number of services not provided
+by the Java2D package:
+<p>
+<ol>
+<li> Automatic Redisplay: Whenever a Silhouette canvas's paint method
+     is called, it automatically redraws all the Silhouette shapes and
+     swing components that have been added to the canvas. The Java2D
+     graphics model requires the programmer to manually erase and
+     redraw all custom 2D shapes.
+<p>
+<li> Retained Object Model: Java2D provides a retained object model
+     that keeps track of a shape's coordinates. Silhouette provide
+     a beefed up retained object model that keeps track of a shape's
+     other properties, such as its fill color, its line color, and
+     whether or not it is visible. When a canvas's paint method is
+     called, the canvas automatically sets the graphics context to
+     an object's properties before drawing the object.
+</ol>
+<p>
+Silhouette differs from the Java2D graphics package in the way it
+displays objects on the screen. The Java2D graphics package requires
+the programmer to explicitly call draw commands to display shapes
+on the screen. In contrast, Silhouette requires the programmer to
+1) create an instance of the shape to be drawn on the screen, 2) set
+the display properties of the shape using the created object's various
+set property methods, and 3) add the object to a Silhouette canvas.
+Adding the object to the Silhouette canvas is like adding a Swing
+component to a JComponent. It registers the shape with the canvas
+so that the canvas knows about it and can draw it when the canvas's
+paint method is called.
+</body>

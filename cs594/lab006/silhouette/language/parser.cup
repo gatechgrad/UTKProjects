@@ -1,0 +1,1578 @@
+package silhouette.language;
+
+import java_cup.runtime.*;
+import java.util.*;
+import java.io.*;
+
+action code {:
+
+  /* variables */
+  FileOutputStream outStream;
+  PrintWriter writer;
+  String fileName;
+
+  String packageName;
+  Vector importNames = new Vector();
+
+  PartClass silObject;
+
+  int size;
+  String s;
+  String id;
+
+  /**
+   * Method --- generateCode
+   */
+  public void generateCode() throws IOException {
+
+    /* creat the file */
+    outStream = new FileOutputStream(fileName);
+    writer = new PrintWriter(outStream);
+
+    /* write the comments */
+    writer.println("// " + new Date());
+    writer.println("// the following code is automatically generately from the parser");
+    writer.println();
+
+    /* package statement */
+    if(packageName != null) {
+      writer.println("package " + packageName + ";");
+      writer.println();
+    }
+
+    /* import statements */
+    writer.println("import silhouette.shapes.*;");
+    writer.println("import silhouette.constraints.*;");
+    size = importNames.size();
+    for(int i = 0; i < size; i++) {
+      writer.println("import " + (String) importNames.elementAt(i) + ";");
+    }
+    writer.println();
+
+    /* class declaration */
+    generateClass(silObject, 0);
+    //displayTree(silObject);
+
+    writer.close();
+
+  }
+
+
+  /**
+   * method -- generateClass
+   *           genearate the class declaration
+   **/
+  public void generateClass(PartClass p, int spaces) {
+    for(int j = 0; j < spaces; j++) writer.print("\t");
+    //if(p.superClass.equals("CompositeShape")) {
+    if(p.isTopLevel) {
+      s = p.name;
+      p.top = p;	// define the top class
+    } else {
+      s = "_" + p.name;
+    }
+    // implements interfaces
+    String interfaceStr = new String();
+    if(p.superClass != null) {
+      interfaceStr = " extends " + p.superClass;
+    }
+    if(p.interfaceList != null) {
+      interfaceStr = interfaceStr + " implements " + p.interfaceList;
+    }
+    writer.print(p.access + "class " + s + interfaceStr + " {\n");
+    writer.flush();
+
+    Contents contents = p.contents;
+    PropertiesClass properties = contents.properties;
+    Vector parts = contents.parts;
+    MethodsClass methods = contents.methods;
+    Vector nproperties = null;
+    if(properties != null) {
+      nproperties = properties.nProperties;
+    }
+
+    /* declaration of new properties */
+    if(properties != null && nproperties != null) {
+      size = nproperties.size();
+
+      // comments 
+      if(size > 0) {
+        for(int j = 0; j <= spaces; j++) writer.print("\t");
+        writer.print("/* declaration of new properties */\n");
+        writer.flush();
+      }
+
+      // declaration, add the property to the table
+      for(int i = 0; i < size; i++) {
+        NewPropertyClass nproperty = (NewPropertyClass) nproperties.elementAt(i);
+        String s2 = getProperty(nproperty.type);
+        String s3;
+
+        // add the property to the table
+        if(!(p.table.containsKey(nproperty.id))) {
+          p.table.put(nproperty.id, new String("get"+upperCaseFirstChar(nproperty.id)+"()"));
+        }
+
+        if(nproperty.value != null && nproperty.value.valueType == 0) {
+          s3 = (String) nproperty.value.value;
+        } else {
+          s3 = getDefaultValue(nproperty.type);
+        }
+        String s4 = new String();
+        if(nproperty.accessStaticR != null && nproperty.accessStaticR.isStatic) {
+          s4 = "static ";
+        }
+        if(nproperty.accessStaticR != null && nproperty.accessStaticR.isFinal) {
+          s4 = s4 + "final ";
+        }
+        s = "protected "+s4 + s2+" "+nproperty.id +" = new "+s2+"(\""+nproperty.id+"\", "+s3+", this);";
+        for(int j = 0; j <= spaces; j++) writer.print("\t");
+        writer.print(s+"\n");
+        writer.flush();
+      }
+
+      if(size > 0) {
+        writer.println();
+      }
+
+    }
+
+    /* declaration of the parts, define part's parent, add parts to table */
+    if(parts != null) {
+      size = parts.size();
+      if(size > 0) {
+        for(int i = 0; i <= spaces; i++) writer.print("\t");
+        writer.print("/* declaration of the parts */\n");
+      }
+      for(int i = 0; i < size; i++) {
+        PartClass part = (PartClass) parts.elementAt(i);
+
+        for(int j = 0; j <= spaces; j++) writer.print("\t");
+        writer.print("protected " + part.superClass + " " + part.name + ";\n");
+        writer.flush();
+
+        // define part's parent
+        part.parent = p.name;
+
+        // define part's top
+        part.top = p.top;
+
+        // add parts to the table
+        if( !(p.table.containsKey(part.name)) ) {
+          p.table.put(part.name, new String("get" + upperCaseFirstChar(part.name) + "()"));
+//System.out.println("add " + part.name + " in the table");
+        }
+      }
+      if(size > 0) writer.println();
+    }
+
+    /* get and set Accessors of new properties */
+    if(properties != null && nproperties != null) {
+      size = nproperties.size();
+
+      // comments
+      if(size > 0) {
+        for(int j = 0; j <= spaces; j++) writer.print("\t");
+        writer.print("/* get(set) accessors of new properties */\n");
+        writer.flush();
+      }
+
+      // get accessors, set accessors
+      for(int i = 0; i < size; i++) {
+        NewPropertyClass nproperty = (NewPropertyClass) nproperties.elementAt(i);
+        AccessStaticReadOnlyClass asr = (AccessStaticReadOnlyClass) nproperty.accessStaticR;
+        // get accessor
+        String s2 = upperCaseFirstChar(nproperty.id);
+        String s3 = new String();
+        if(asr != null) {
+          if(asr.access != null) s3 = asr.access + " ";
+          if(asr.isStatic) s3 = s3 + "static ";
+        }
+
+        s = s3 + nproperty.type + " get" + s2 + "() {";
+        for(int j = 0; j <= spaces; j++) writer.print("\t");
+        writer.print(s + "\n");
+        writer.flush();
+
+        if(isObjType(nproperty.type)) {
+          id = " (" + nproperty.type  + ") ";
+        } else {
+          id = new String();
+        }
+        s = "return " + id + nproperty.id + ".getValue();";
+        for(int j = 0; j <= spaces; j++) writer.print("\t");
+        writer.print("\t" + s + "\n");
+        writer.flush();
+
+        for(int j = 0; j <= spaces; j++) writer.print("\t");
+        writer.print("}\n");
+        writer.flush();
+
+        //set accessor
+        if(asr != null && asr.readOnly) {
+          s3 = "protected ";
+        } else if(asr != null && asr.access != null) {
+          s3 = asr.access + " ";
+        } else {
+          s3 = new String();
+        }
+
+        if(asr != null && asr.isStatic) {
+          s2 = "static void ";
+        } else {
+          s2 = "SilShape ";
+        }
+
+        String s1 = upperCaseFirstChar(nproperty.id);
+        s = s3 + s2 + "set" + s1 + "(" + nproperty.type + " new" + s1 + ") {";
+        for(int j = 0; j <= spaces; j++) writer.print("\t");
+        writer.print(s + "\n");
+
+        for(int j = 0; j <= spaces; j++) writer.print("\t");
+        writer.print("\t" + nproperty.id + ".setValue(this, new" + s1 + ");\n");
+
+        if(asr == null || (asr != null && !(asr.isStatic))) {
+          for(int j = 0; j <= spaces; j++) writer.print("\t");
+          writer.print("\treturn this;\n");
+        }
+
+        for(int j = 0; j <= spaces; j++) writer.print("\t");
+        writer.print("}\n");
+        writer.flush();
+
+
+        writer.println();
+
+      }
+
+      if(size > 0) {
+        writer.println();
+      }
+    }
+
+    /* get accessors of the parts */
+    if(parts != null) {
+      size = parts.size();
+      if(size > 0) {
+        for(int i = 0; i <= spaces; i++) writer.print("\t");
+        writer.print("/* get accessors of the parts */\n");
+      }
+      for(int i = 0; i < size; i++) {
+        PartClass part = (PartClass) parts.elementAt(i);
+
+        // get accessor
+        for(int j = 0; j <= spaces; j++) writer.print("\t");
+	String s = part.name.toUpperCase();
+        s = new String(s.charAt(0) + part.name.substring(1));
+        writer.print("protected " + part.superClass + " get" + s + "() {\n");
+        for(int j = 0; j <= spaces; j++) writer.print("\t");
+        writer.print("\treturn " + part.name + ";\n");
+        for(int j = 0; j <= spaces; j++) writer.print("\t");
+        writer.print("}\n");
+        writer.flush();
+      }
+      if(size > 0) writer.println();
+    }
+
+
+    /* for Parts, recursive call generateClass to generate the inner class */
+    if(parts != null) {
+      int psize = parts.size();
+      //System.out.println("parts.size: " + psize);
+      for(int i = 0; i < psize; i++) {
+        PartClass part = (PartClass) parts.elementAt(i);
+        //System.out.println("generate inner class: " + part.name);
+        //System.out.println("before calling, parts.size: " + psize);
+        generateClass(part, spaces+1);
+        //System.out.println("after calling, parts.size: " + psize);
+        writer.println();
+      }
+    }
+
+
+    /* beginning of initial block */
+    for(int i = 0; i <= spaces; i++) writer.print("\t");
+    writer.print("/* initial block */\n");
+    for(int i = 0; i <= spaces; i++) writer.print("\t");
+    writer.print("{\n");
+    writer.flush();
+
+    /* add pre-defined properties to table(can do this since after here table is used)
+     * initialize the pre-defined properties */
+    Vector pproperties;
+    if(properties != null && (pproperties =  properties.pProperties) != null) {
+      size = pproperties.size();
+      if(size > 0) {
+        for(int i = 0; i <= spaces+1; i++) writer.print("\t");
+        writer.print("// initialize the pre-defined properties\n");
+        writer.flush();
+      }
+
+      // add pre-defined properties to the table
+/*
+      for(int i =0; i < size; i++) {
+        PPropertyClass pProperty = (PPropertyClass) pproperties.elementAt(i);
+        if( !(p.top.table.containsKey(pProperty.id)) ) {
+          p.top.table.put(pProperty.id, new String("get"+upperCaseFirstChar(pProperty.id)+"()"));
+System.out.println("add "+pProperty.id+" into table, "+new String("get"+upperCaseFirstChar(pProperty.id)+"()"));
+        }
+      }
+*/
+
+      // debug: print out the table
+      System.out.println("debug className: " + p.name);
+      if ( !(p.table.isEmpty()) ) {
+        Iterator keys = (Iterator) p.table.keys();
+        for ( ; keys.hasNext(); ) {
+          System.out.println( (String) keys.next() );
+       }
+      }
+
+      // output the symbol table to the file
+      if( !(p.table.isEmpty()) ) {
+        try {
+          FileOutputStream outStream = new FileOutputStream(p.name + ".sym");
+          PrintWriter writer = new PrintWriter(outStream);
+          Iterator keys = (Iterator) p.table.keys();
+          for( ; keys.hasNext(); ) {
+            String key = (String) keys.next();
+            writer.println( "\"" + key + "\" \"" + p.table.get(key) + "\"");
+            writer.flush();
+          }
+          writer.close();
+        }
+        catch (IOException e) {
+          System.out.println(e);
+        }
+      }
+
+      // initialize the pre-defined properties
+      for(int i = 0; i < size; i++) {
+        PPropertyClass pProperty = (PPropertyClass) pproperties.elementAt(i);
+        ValueClass v = pProperty.value;
+        switch(v.valueType) {
+        case 0:
+          for(int j = 0; j <= spaces+1; j++) writer.print("\t");
+          s = upperCaseFirstChar(pProperty.id);
+          writer.print("set" + s + "(" + (String) v.value + ");\n");
+          writer.flush();
+          break;
+
+        case 1:		// formula
+	  for(int j = 0; j <= spaces+1; j++) writer.print("\t");
+	  writer.print("addConstraint( new constraint () {\n");
+          writer.flush();
+
+	  for(int j = 0; j <= spaces+1; j++) writer.print("\t");
+	  writer.print("\tpublic void formula(constrainedObject self) {\n");
+          writer.flush();
+
+          s = upperCaseFirstChar(pProperty.id);
+	  for(int j = 0; j <= spaces+1; j++) writer.print("\t");
+          String s4 = convertString((Vector) v.value, p.table);
+          String s2 = "set" + s + "(" + s4 + ");";
+//System.out.println("debug s2: " + s2);
+          String s3 = replaceGetParent(s2, p.parent);
+//System.out.println("debug: " + s3 + "\n");
+          writer.print("\t\t" + s3 + "\n");
+	  //writer.print("\t\tset" + s + "(" + v.value + ");\n");
+          writer.flush();
+
+	  for(int j = 0; j <= spaces+1; j++) writer.print("\t");
+	  writer.print("\t}\n");
+          writer.flush();
+
+	  for(int j = 0; j <= spaces+1; j++) writer.print("\t");
+	  writer.print("});\n");
+          writer.flush();
+
+	  break;
+
+        case 2:		// pFormula
+	  for(int j = 0; j <= spaces+1; j++) writer.print("\t");
+          /* s = replaceGetParent((String)v.value, p.parent);
+          writer.print(s + "\n"); */
+	  writer.print(v.value + "\n");
+          writer.flush();
+	  break;
+        }
+      }
+
+      if(size > 0) writer.println();
+    }
+
+    
+    /* add constaints of new properties to initial block*/
+    if(properties != null && nproperties != null) {
+      size = nproperties.size();
+      boolean comment = true;
+
+      for(int i = 0; i < size; i++) {
+        NewPropertyClass nproperty = (NewPropertyClass) nproperties.elementAt(i);
+        ValueClass v = nproperty.value;
+
+        if(v != null && v.valueType == 1) {	// formula
+          if(comment) {
+            for(int j = 0; j <= spaces+1; j++) writer.print("\t");
+            writer.print("// add constraints of new properties\n");
+            writer.flush();
+            comment = false;
+          }
+
+          for(int j = 0; j <= spaces+1; j++) writer.print("\t");
+          writer.print("addConstraint( new constraint () {\n");
+
+          for(int j = 0; j <= spaces+1; j++) writer.print("\t");
+          writer.print("\tpublic void formula(constrainedObject self) {\n");
+
+          s = upperCaseFirstChar(nproperty.id);
+          for(int j = 0; j <= spaces+1; j++) writer.print("\t");
+          String s4 = convertString((Vector) v.value, p.table);
+          String s2 = "set" + s + "(" + s4 + ");";
+          String s3 = replaceGetParent(s2, p.parent);
+          writer.print("\t\t" + s3 + "\n");
+          //writer.print("\t\tset" + s + "(" + v.value + ");\n");
+
+          for(int j = 0; j <= spaces+1; j++) writer.print("\t");
+          writer.print("\t}\n");
+
+          for(int j = 0; j <= spaces+1; j++) writer.print("\t");
+          writer.print("});\n");
+          writer.flush();
+        }
+
+        if(v != null && v.valueType == 2) {	// pformula
+          if(comment) {
+            for(int j = 0; j <= spaces+1; j++) writer.print("\t");
+            writer.print("// add constraints of new properties");
+            comment = false;
+          }
+
+          for(int j = 0; j <= spaces+1; j++) writer.print("\t");
+          /*s = replaceGetParent((String)v.value, p.parent);
+          writer.print(s + "\n");*/
+          writer.print(v.value + "\n");
+          writer.flush();
+        }
+
+      }
+
+      writer.println();
+    }
+
+    /* create and add part to the composite shape in initialization block */
+    if(parts != null) {
+      size = parts.size();
+      if(size > 0) {
+        for(int i = 0; i <= spaces+1; i++) writer.print("\t");
+        writer.print("/* create and add part to the composite shape in initialization block*/\n");
+      }
+      for(int i = 0; i < size; i++) {
+        PartClass part = (PartClass) parts.elementAt(i);
+
+        for(int j = 0; j <= spaces+1; j++) writer.print("\t");
+        writer.print(part.name + " = new _" + part.name + "();\n");
+
+        for(int j = 0; j <= spaces+1; j++) writer.print("\t");
+        writer.print("add(" + part.name + ", \"" + part.name + "\");\n");
+
+        for(int j = 0; j <= spaces+1; j++) writer.print("\t");
+        writer.print(part.name + ".setParent(this);\n");
+        writer.println();
+      }
+    }
+
+
+    /* end of initial block */
+    for(int i = 0; i <= spaces; i++) writer.print("\t");
+    writer.print("}	// end of initial block\n");
+    writer.println();
+    writer.flush();
+
+    /* Methods */
+    if(methods != null && methods.code != null) {
+      for(int i = 0; i <= spaces; i++) {
+        writer.print("\t");
+      }
+      writer.print("/* user code provided by user between \"begin java\" and \"end java\" statements */\n");
+      writer.println(methods.code);
+    }
+
+
+    /* end of the class */
+    writer.println();
+    for(int i = 0; i < spaces; i++) {
+      writer.print("\t");
+    }
+    writer.print("}\n");
+  }
+
+  /**
+   * Method --- String getProperty(String type)
+   * return silhouetteproperty according the type
+   */
+  String getProperty(String type) {
+    if(type.equals("boolean")) {
+      return new String("booleanProperty");
+    }
+
+    if(type.equals("double") || type.equals("float")) {
+      return new String("doubleProperty");
+    }
+
+    if(type.equals("int") || type.equals("long")) {
+      return new String("intProperty");
+    }
+
+    if(type.equals("string") || type.equals("char")) {
+      return new String("stringProperty");
+    }
+
+    return new String("objectProperty");
+  }
+
+  /**
+   * Method --- getDefaultValue(String type)
+   */
+  String getDefaultValue(String type) {
+    if(type.equals("int") || type.equals("long")) {
+      return new String("0");
+    }
+
+    if(type.equals("double") || type.equals("float")) {
+      return new String("0.0");
+    }
+
+    if(type.equals("string") ) {
+      return new String();
+    }
+
+    if(type.equals("char")) {
+      return new String("a");
+    }
+
+    if(type.equals("boolean")) {
+      return new String("true");
+    }
+
+    return new String("null");
+
+  }
+
+  /**
+   * Method -- upperCaseFirstChar(String s)
+   */
+  String upperCaseFirstChar(String s) {
+    String s2 = s.toUpperCase();
+    return new String(s2.charAt(0) + s.substring(1));
+  }
+
+  /**
+   *  Method --- isObjType(String type)
+   */
+  boolean isObjType(String type) {
+    if(type.equals("int")) return false;
+    if(type.equals("long")) return false;
+    if(type.equals("float")) return false;
+    if(type.equals("double")) return false;
+    if(type.equals("boolean")) return false;
+    if(type.equals("char")) return false;
+    if(type.equals("string")) return false;
+
+    return true;
+  }
+
+  /**
+   * Method --- replaceGetParent(String s, String type)
+   */
+  String replaceGetParent(String str1, String type) {
+    //System.out.println("debug replaceParent, str1 : " + str1);
+    //System.out.println("debug replaceParent, type : " + type);
+    // find all the indices of getParent()
+    String str = new String();
+    String s = str1;
+    String s2 = "getParent()";
+    int index = s.indexOf(s2);
+    while(index > 0) {
+      str = str + s.substring(0, index) + " ((" + type + ") getParent())";
+      String s1 = s.substring(index + s2.length());
+      s = s1;
+      index = s.indexOf(s2);
+    }
+
+    str = str + s;
+
+    //System.out.println(str);
+    return str;
+  }
+
+  /**
+   * Method -- initializeTable()
+   *   initialize hash table which store the identifiers needing converted in formula
+   */
+/*
+  void initializeTable(Hashtable table) {
+    table.put("parent", "getParent()");
+    table.put("left", "getLeft()");
+    table.put("top", "getTop()");
+    table.put("width", "getWidth()");
+    table.put("height", "getHeight()");
+    table.put("x1", "getX1()");
+    table.put("x2", "getX2()");
+    table.put("y1", "getY1()");
+    table.put("y2", "getY2()");
+    table.put("visible", "getVisible()");
+    table.put("fillColor", "getFillColor()");
+    table.put("lineColor", "getLineColor()");
+    table.put("text", "getText()");
+    table.put("font", "getFont()");
+  }
+*/
+
+  /**
+   * Method --- initializeTable(PartClass class, String supClassTable)
+   * Parameter:
+   *	table: the table will be initialized
+   *	supClassTable: the file of supper class's sybmol table
+   * Description:
+   *	find the class path.
+   *	find the symbol table file of the supper class in the class directories
+   *	inport the symbol to the table
+   **/
+  void initializeTable (PartClass partClass, String fileName)
+  {
+    // every table has parent key
+    Hashtable table = partClass.table;
+    table.put( "parent" , "getParent()");
+
+    // if the supper class is CompositeShape, it's the root
+    if( fileName.equals("CompositeShape")) {
+      return;
+    }
+
+    // get the class path
+    String classPath = System.getProperty("java.class.path", ".");
+    //System.out.println( "debug: " + classPath);
+
+    // parse the class path
+    Vector dirs = new Vector();
+    int index = classPath.indexOf(':');
+    while(index > 0) {
+      dirs.addElement ( classPath.substring (0, index) );
+      classPath = classPath.substring(index + 1);
+      index = classPath.indexOf(':');
+    }
+    dirs.addElement(classPath);
+
+    // debug: printout the directories
+/*
+    int size = dirs.size();
+    for(int i = 0; i < size; i++) {
+      String dir = (String) dirs.elementAt(i);
+      System.out.println(dir);
+    }
+*/
+
+    /* find the file and import to the table */
+    String inFile = fileName + ".sym";
+    //System.out.println("debug fileName: " + inFile);
+    int size = dirs.size();
+    boolean fileExist = false;
+    for( int i = 0; i < size; i++) {
+      String dir = (String) dirs.elementAt(i);
+      File f;
+      if (dir.equals(".")) {
+        f = new File(inFile);
+      } else {
+        f = new File(dir, inFile);
+      }
+
+      //System.out.println("debug getPath(): " + f.getPath());
+      if(f.exists()) {
+        fileExist = true;
+        try {
+          FileInputStream stream = new FileInputStream(f);
+          InputStreamReader reader = new InputStreamReader(stream);
+          StreamTokenizer tokens = new StreamTokenizer(reader);
+          tokens.quoteChar( (int) '"');
+          //tokens.eolIsSignificant(true);
+
+          // import the symbol file to the table, and write the symbols to the file
+          while ( tokens.nextToken() != tokens.TT_EOF) {
+            String key = tokens.sval;
+            tokens.nextToken(); String value = tokens.sval;
+            if( !table.containsKey(key) ) {
+              table.put(key, value);
+              System.out.println("debug: put in the table: " + key + "  " + value);
+            }
+          }
+        }
+        catch (IOException e) {
+          System.out.println(e);
+        }
+        break;
+      }
+
+    }
+
+  }
+
+  /**
+   * Method -- convertString(Vector v, Hashtable table)
+   *   this method is used to convert the identifiers in formula
+   * v      -- Vector of ArgumentClass
+   * table  -- store the words needed to convert
+   */
+  String convertString(Vector v, Hashtable table) {
+    String s = new String();
+
+    Iterator i = v.iterator();
+    for( ; i.hasNext(); ) {
+      ArgumentClass a = (ArgumentClass) i.next();
+//System.out.println(a.str);
+
+      if(a.isName) { // is Name
+        int j = a.str.indexOf(".");
+        if(j < 0) {	// identifier
+          if(table.containsKey(a.str)) {
+            s = s + (String) table.get(a.str);
+          } else {
+            s = s + a.str;
+          }
+
+        } else {	// dottedName
+          String s1 = a.str.substring(0, j);
+          if(table.containsKey(s1)) {
+            //s = s + table.get(s1) + "." + convertGetStr(a.str.substring(j+1));
+            /* if the first ID of the dotted name is partName, property name, 
+             * convert every part to getName(), 
+             */
+            s = s + table.get(s1) + ".";
+            String s2 = a.str.substring(j+1);
+            int index = s2.indexOf(".");
+            while(index > 0) {
+              s1 = s2.substring(0, index);
+              s2 = s2.substring(index+1);
+              s = s + "get" + upperCaseFirstChar(s1) + "()" + ".";
+              index = s2.indexOf(".");
+            }
+            s = s + "get" + upperCaseFirstChar(s2) + "()";
+          } else { 
+            s = s + a.str;
+          }
+        }
+
+      } else {	// non Name
+        s = s + a.str;
+      }
+
+    }
+
+//System.out.println("convertStr output: " + s);
+    return s;
+  }
+
+  /**
+   * Method -- convertGetStr(String s)
+   *   serve convertString
+   *   convert dotted name s to get string, 
+   *   like parent.name-->getParent().getName()
+   */
+  String convertGetStr(String s)
+  {
+    String s1 = s;
+    String str = new String();
+    boolean ok = true;
+
+    while(ok) {
+      int i = s1.indexOf(".");
+      if(i > 0) {
+        str = str + "get" + upperCaseFirstChar(s1.substring(0, i)) + "()" + ".";
+        s1 = s1.substring(i+1);
+      } else {
+        ok = false;
+      }
+    }
+
+    str = str + "get" + upperCaseFirstChar(s1) + "()";
+
+    return str;
+  }
+
+
+  /* definition of the node classes */
+
+  class PartClass {
+    boolean isTopLevel;
+    String access;
+    String superClass;
+    String name;
+    String parent;
+    PartClass top;	// the top_level name, which will be used to keep track of the hash table
+    Contents contents;
+    Hashtable table;
+    String interfaceList = null;	// string to record the names of interfaces
+  }
+
+  class Contents {
+    PropertiesClass properties;
+    Vector parts;
+    MethodsClass methods;
+  }
+
+  class PropertiesClass {
+    Vector pProperties;
+    Vector nProperties;
+  }
+
+  class PPropertyClass {
+    String id;
+    ValueClass value;
+  }
+
+  class ValueClass {
+    int valueType = 0;	// 0: common case, 1: formula, 2: pformula
+    Object value;
+  }
+
+  class NewPropertyClass {
+    String type;
+    String id;
+    ValueClass value;
+    AccessStaticReadOnlyClass accessStaticR;	// add final option
+  }
+
+  class AccessStaticReadOnlyClass {
+    String access;
+    boolean isStatic;
+    boolean readOnly;
+    boolean isFinal;	// add final option
+  }
+
+  class MethodsClass {
+    String code;
+  }
+
+:}
+
+
+parser code {:
+
+  /** Report a non fatal error (or warning).  This method takes a message
+   *  string and an additional object (to be used by specializations
+   *  implemented in subclasses).  Here in the base class a very simple
+   *  implementation is provided which simply prints the message to
+   *  System.err.
+   *
+   * @param message an error message.
+   * @param info    an extra object reserved for use by specialized subclasses.
+   */
+  public void report_error(String message, Object info)
+    {
+      System.err.print(message);
+      if (info instanceof Symbol)
+        if (((Symbol)info).left != -1)
+        System.err.println(" on line " + ((Symbol)info).left);
+        else System.err.println("");
+      else System.err.println("");
+    }
+
+  /*. . . . . . . . . . . . . . . . . . . . . . . . . . . . . .*/
+
+  /** This method is called when a syntax error has been detected and recovery
+   *  is about to be invoked.  Here in the base class we just emit a
+   *  "Syntax error" error message.
+   *
+   * @param cur_token the current lookahead Symbol.
+   */
+  public void syntax_error(Symbol cur_token)
+    {
+      report_error("Syntax error", cur_token);
+      System.err.println("Couldn't repair and continue parse");
+      System.exit(0);
+    }
+
+
+  public static void main(String args[]) throws Exception {
+    // check the command line
+    if(args.length != 1) {
+      System.out.println("usage: parser inputfile\n");
+      System.exit(1);
+    }
+
+    FileInputStream stream = new FileInputStream(args[0]);
+    // new parser(new Yylex(stream)).parse();
+
+    System.out.println("begin parsing");
+    new parser(new Yylex(stream)).parse();
+  }
+:}
+
+terminal LCPAREN, RCPAREN;
+terminal EQ;
+terminal DOT;
+terminal ASTERISK;
+terminal COMMA;
+
+terminal SEMI;
+
+terminal PACKAGE;
+terminal IMPORT;
+terminal CLASS;
+terminal STATIC;
+terminal READONLY;
+terminal FINAL;
+terminal String PUBLIC, PROTECTED, PRIVATE;
+terminal String INT, LONG, FLOAT, DOUBLE, BOOLEAN, CHAR, STRING;
+terminal FORMULA;
+terminal ArgumentClass FORMULAINPUT;
+terminal String PFORMULA_NAME;
+terminal String VALUEINPUT;
+terminal ArgumentClass ARGUMENTINPUT;
+terminal PART;
+terminal EXTENDS;
+terminal IMPLEMENTS;
+terminal BEGIN_JAVA, END_JAVA;
+terminal String METHODSINPUT;
+
+terminal String INTEGERNUMBER;
+terminal String REALNUMBER;
+terminal String TRUE, FALSE;
+terminal String TEXTSTRING;
+terminal String CHARACTER;
+terminal String IDENTIFIER;
+terminal String DOTTEDNAME;
+
+non terminal Preamble;
+non terminal SilObject;
+non terminal PackageStmt;
+non terminal ImportStmts, ImportStmt;
+non terminal String Name;
+non terminal String InterfaceList;
+non terminal Contents ClassContents;
+non terminal PropertiesClass Properties;
+non terminal Vector PredefinedProperties;
+non terminal PPropertyClass PredefinedProperty;
+non terminal Vector NewProperties;
+non terminal NewPropertyClass NewProperty;
+non terminal String Access;
+non terminal AccessStaticReadOnlyClass AccessStaticReadOnly;
+non terminal Vector Parts;
+non terminal PartClass Part;
+non terminal MethodsClass Methods;
+non terminal String Type;
+non terminal ValueClass Value;
+non terminal String ValueInputs;
+non terminal String ArgumentList;
+non terminal String Argument;
+non terminal Vector FormulaInputs;
+non terminal String MethodsInputs;
+non terminal ObjectFile;
+
+
+ObjectFile ::= Preamble SilObject
+	{: System.out.println("accept ObjectFile"); :}
+	;
+
+
+
+Preamble ::= 
+	{: System.out.println("finish parsing Preamble"); :}
+	| PackageStmt
+	{: System.out.println("finish parsing Preamble"); :}
+	| ImportStmts
+	{: System.out.println("finish parsing Preamble"); :}
+	| PackageStmt ImportStmts
+	{: System.out.println("finish parsing Preamble"); :}
+	;
+
+PackageStmt ::= PACKAGE Name:n SEMI
+	{: 
+	  packageName = new String(n);
+	:}
+	;
+
+ImportStmts ::= ImportStmts ImportStmt
+	| ImportStmt
+	;
+
+ImportStmt ::= IMPORT Name:n SEMI
+	{: 
+	  importNames.add(new String(n));
+	:}
+	| IMPORT DOTTEDNAME:n DOT ASTERISK SEMI
+	{: 
+	  importNames.add(new String(n+".*"));
+	:}
+	;
+
+
+
+SilObject ::= CLASS IDENTIFIER:id EXTENDS Name:n LCPAREN ClassContents:c RCPAREN
+	{:
+	  fileName = new String(id + ".java");
+
+	  silObject = new PartClass();
+	  silObject.isTopLevel = true;
+	  silObject.access = "";
+          silObject.superClass = n;
+          silObject.name = id;
+	  silObject.contents = c;
+	  silObject.table = new Hashtable();
+	  /* initializeTable(silObject.table); */
+          if( !n.equals("CompositeShape") ) {	// CompositeShape is root
+	    initializeTable(silObject, n);
+	  }
+
+	  System.out.println("finish parsing SilObject");
+
+	  generateCode();
+
+	:}
+
+	| Access:a CLASS IDENTIFIER:id EXTENDS Name:n LCPAREN ClassContents:c RCPAREN
+        {:
+          fileName = new String(id + ".java");
+
+          silObject = new PartClass();
+	  silObject.isTopLevel = true;
+	  silObject.access = a + " ";
+          silObject.superClass = n;
+          silObject.name = id;
+          silObject.contents = c;
+	  silObject.table = new Hashtable();
+          /* initializeTable(silObject.table); */
+          if( !n.equals("CompositeShape") ) {	// CompositeShape is root
+	    initializeTable(silObject, n);
+	  }
+
+	  System.out.println("finish parsing SilObject");
+
+          generateCode();
+        :}
+
+	| CLASS IDENTIFIER:id IMPLEMENTS InterfaceList:l LCPAREN ClassContents:c RCPAREN
+        {:
+          fileName = new String(id + ".java");
+
+          silObject = new PartClass();
+          silObject.isTopLevel = true;
+          silObject.access = "";
+          silObject.superClass = null;	// no superclass
+	  silObject.interfaceList = l;	// implements interface
+          silObject.name = id;
+          silObject.contents = c;
+          silObject.table = new Hashtable();
+          /* initializeTable(silObject.table); */
+
+          System.out.println("finish parsing SilObject");
+
+          generateCode();
+
+        :}
+
+        | Access:a CLASS IDENTIFIER:id IMPLEMENTS InterfaceList:l LCPAREN ClassContents:c RCPAREN
+        {:
+          fileName = new String(id + ".java");
+
+          silObject = new PartClass();
+          silObject.isTopLevel = true;
+          silObject.access = a + " ";
+          silObject.superClass = null;	// no superclass
+	  silObject.interfaceList = l;	// implements interface
+          silObject.name = id;
+          silObject.contents = c;
+          silObject.table = new Hashtable();
+          /* initializeTable(silObject.table); */
+
+          System.out.println("finish parsing SilObject");
+
+          generateCode();
+        :}
+
+	| CLASS IDENTIFIER:id EXTENDS Name:n IMPLEMENTS InterfaceList:l LCPAREN ClassContents:c RCPAREN
+        {:
+          fileName = new String(id + ".java");
+
+          silObject = new PartClass();
+	  silObject.isTopLevel = true;
+	  silObject.access = "";
+          silObject.superClass = n;
+          silObject.name = id;
+          silObject.contents = c;
+	  silObject.table = new Hashtable();
+	  silObject.interfaceList = l;
+          /* initializeTable(silObject.table); */
+          if( !n.equals("CompositeShape") ) {	// CompositeShape is root
+	    initializeTable(silObject, n);
+	  }
+
+	  System.out.println("finish parsing SilObject");
+
+          generateCode();
+        :}
+
+	| Access:a CLASS IDENTIFIER:id EXTENDS Name:n IMPLEMENTS InterfaceList:l LCPAREN ClassContents:c RCPAREN
+        {:
+          fileName = new String(id + ".java");
+
+          silObject = new PartClass();
+	  silObject.isTopLevel = true;
+	  silObject.access = a + " ";
+          silObject.superClass = n;
+          silObject.name = id;
+          silObject.contents = c;
+	  silObject.table = new Hashtable();
+	  silObject.interfaceList = l;
+          /* initializeTable(silObject.table); */
+          if( !n.equals("CompositeShape") ) {	// CompositeShape is root
+	    initializeTable(silObject, n);
+	  }
+
+	  System.out.println("finish parsing SilObject");
+
+          generateCode();
+        :}
+	;
+
+ClassContents ::=  Properties:p Parts:ps Methods:m
+	{: 
+	  RESULT = new Contents();
+	  RESULT.properties = p;
+	  RESULT.parts = ps;
+	  RESULT.methods = m;
+        :}
+	| Properties:p Parts:ps
+	{:
+	  RESULT = new Contents();
+	  RESULT.properties = p;
+	  RESULT.parts = ps;
+	:}
+	;
+
+Properties ::= 
+	| PredefinedProperties:pp
+	  {:
+	    RESULT = new PropertiesClass();
+	    RESULT.pProperties = pp;
+	  :}
+	| NewProperties:np
+	  {:
+	    RESULT = new PropertiesClass();
+	    RESULT.nProperties = np;
+	  :}
+	| PredefinedProperties:pp NewProperties:np
+	  {:
+	    RESULT = new PropertiesClass();
+	    RESULT.nProperties = np;
+	    RESULT.pProperties = pp;
+	  :}
+	;
+
+PredefinedProperties ::= PredefinedProperty:p
+	{:
+	  RESULT = new Vector();
+	  RESULT.add(p);
+	:}
+
+	| PredefinedProperties:ps PredefinedProperty:p
+	{:
+	  RESULT = ps;
+	  RESULT.add(p);
+	:}
+	;
+
+PredefinedProperty ::= IDENTIFIER:id EQ Value:v SEMI
+	{:
+	  RESULT = new PPropertyClass();
+	  RESULT.id = id;
+	  RESULT.value = v;
+	:}
+	;
+
+NewProperties ::= NewProperty:np
+	{: RESULT = new Vector(); RESULT.add(np); :}
+
+	| NewProperties:nps NewProperty:np
+	{: RESULT = nps; RESULT.add(np); :}
+	;
+
+NewProperty ::= Type:t IDENTIFIER:id EQ Value:v SEMI
+	{: 
+	  RESULT = new NewPropertyClass ();
+	  RESULT.type = t;
+	  RESULT.id = id;
+	  RESULT.value = v;
+	:}
+
+	| Type:t IDENTIFIER:id SEMI
+	{: 
+	  RESULT = new NewPropertyClass ();
+	  RESULT.type = t;
+	  RESULT.id = id;
+	:}
+
+	| AccessStaticReadOnly:a Type:t IDENTIFIER:id EQ Value:v SEMI
+	{: 
+	  RESULT = new NewPropertyClass ();
+	  RESULT.type = t;
+	  RESULT.id = id;
+	  RESULT.value = v;
+	  RESULT.accessStaticR = a;
+	:}
+
+	| AccessStaticReadOnly:a Type:t IDENTIFIER:id SEMI
+	{: 
+	  RESULT = new NewPropertyClass ();
+	  RESULT.type = t;
+	  RESULT.id = id;
+	  RESULT.accessStaticR = a;
+	:}
+	;
+
+AccessStaticReadOnly ::= Access:a
+	{:
+	  RESULT = new AccessStaticReadOnlyClass();
+	  RESULT.access = a;
+	:}
+
+	| STATIC
+	{:
+	  RESULT = new AccessStaticReadOnlyClass();
+	  RESULT.isStatic = true;
+	:}
+
+	| READONLY
+	{:
+	  RESULT = new AccessStaticReadOnlyClass();
+	  RESULT.readOnly = true;
+	:}
+
+	| FINAL
+	{:
+	  RESULT = new AccessStaticReadOnlyClass();
+	  RESULT.isFinal = true;
+	:}
+
+
+	| Access:a STATIC
+	{:
+	  RESULT = new AccessStaticReadOnlyClass();
+	  RESULT.access = a;
+	  RESULT.isStatic = true;
+	:}
+
+	| Access:a READONLY
+        {:
+          RESULT = new AccessStaticReadOnlyClass();
+          RESULT.access = a;
+          RESULT.readOnly = true;
+        :}
+
+	| Access:a FINAL
+        {:
+          RESULT = new AccessStaticReadOnlyClass();
+          RESULT.access = a;
+          RESULT.isFinal = true;
+        :}
+
+	| STATIC READONLY
+	{:
+	  RESULT = new AccessStaticReadOnlyClass();
+	  RESULT.isStatic = true;
+	  RESULT.readOnly = true;
+	:}
+
+	| STATIC FINAL
+	{:
+	  RESULT = new AccessStaticReadOnlyClass();
+	  RESULT.isStatic = true;
+	  RESULT.isFinal = true;
+	:}
+
+
+	| Access:a STATIC READONLY
+	{:
+	  RESULT = new AccessStaticReadOnlyClass();
+	  RESULT.access = a;
+	  RESULT.isStatic = true;
+	  RESULT.readOnly = true;
+	:}
+
+	| Access:a STATIC FINAL
+	{:
+	  RESULT = new AccessStaticReadOnlyClass();
+	  RESULT.access = a;
+	  RESULT.isStatic = true;
+	  RESULT.isFinal = true;
+	:}
+
+	| Access:a READONLY FINAL
+	{:
+	  RESULT = new AccessStaticReadOnlyClass();
+	  RESULT.access = a;
+	  RESULT.isFinal = true;
+	  RESULT.readOnly = true;
+	:}
+
+	| STATIC READONLY FINAL
+	{:
+	  RESULT = new AccessStaticReadOnlyClass();
+	  RESULT.isStatic = true;
+	  RESULT.readOnly = true;
+	  RESULT.isFinal = true;
+	:}
+
+	;
+
+Access ::= PUBLIC:e
+	{: RESULT = e; :}
+	| PROTECTED:e
+	{: RESULT = e; :}
+	| PRIVATE:e
+	{: RESULT = e; :}
+	;
+
+Type ::= INT:e
+	{: RESULT = e; :}
+	| LONG:e
+	{: RESULT = e; :}
+	| FLOAT:e
+	{: RESULT = e; :}
+	| DOUBLE:e
+	{: RESULT = e; :}
+	| BOOLEAN:e
+	{: RESULT = e; :}
+	| CHAR:e
+	{: RESULT = e; :}
+	| STRING:e
+	{: RESULT = e; :}
+	| Name:e
+	{: RESULT = e; :}
+	;
+
+Value ::= INTEGERNUMBER: e
+	{:
+	  RESULT = new ValueClass();
+	  RESULT.valueType = 0;
+	  RESULT.value = e;
+	:}
+
+	| REALNUMBER: e
+	{:
+	  RESULT = new ValueClass();
+	  RESULT.valueType = 0;
+	  RESULT.value = e;
+	:}
+
+	| TRUE:e
+	{:
+	  RESULT = new ValueClass();
+	  RESULT.valueType = 0;
+	  RESULT.value = e;
+	:}
+
+	| FALSE:e
+	{:
+	  RESULT = new ValueClass();
+	  RESULT.valueType = 0;
+	  RESULT.value = e;
+	:}
+
+	| TEXTSTRING:e
+	{:
+	  RESULT = new ValueClass();
+	  RESULT.valueType = 0;
+	  RESULT.value = e;
+	:}
+
+	| CHARACTER:e
+	{:
+	  RESULT = new ValueClass();
+	  RESULT.valueType = 0;
+	  RESULT.value = e;
+	:}
+
+	| FORMULA FormulaInputs:e
+	{:
+	  RESULT = new ValueClass();
+	  RESULT.valueType = 1;
+	  RESULT.value = e;
+	  //System.out.println(e);
+	:}
+
+	| PFORMULA_NAME:e1 ArgumentList:e2
+	{:
+	  RESULT = new ValueClass();
+	  RESULT.valueType = 2;
+
+	  /* get rid of PFORMULA and white space charactors */
+	  for(int i = 8; i < e1.length(); i++) {
+	    if(e1 != " " && e1 != "\t" && e1 != "\n") {
+	      id = e1.substring(i);
+	      break;
+	    }
+	  }
+
+	  RESULT.value = "addConstraint(new " + id +  e2 + ");";
+	  //System.out.println(RESULT.value);
+	:}
+
+	| ValueInputs: e
+	{:
+	  RESULT = new ValueClass();
+	  RESULT.valueType = 0;
+	  RESULT.value = e;
+	:}
+	;
+
+ValueInputs ::= VALUEINPUT:e
+	{: RESULT = e; :}
+	| ValueInputs:e1 VALUEINPUT:e2
+	{: RESULT = e1 + e2; :}
+	;
+
+FormulaInputs ::= FORMULAINPUT:e
+	{: 
+	  RESULT = new Vector();
+	  RESULT.add(e);
+	:}
+
+	| FormulaInputs:e1 FORMULAINPUT:e2
+	{:
+	  RESULT = e1;
+	  RESULT.add(e2);
+	:}
+	;
+
+
+ArgumentList ::= 
+	| Argument:e
+	{:
+	  RESULT = e;
+	:}
+
+	| ArgumentList:e1 COMMA Argument:e2
+	{:
+	  RESULT = e1 + ", " + e2;
+	:}
+	;
+
+
+Argument ::= ARGUMENTINPUT:e
+	{:
+/*
+	  if(e.isName == true) {
+	    s = e.str.toUpperCase();
+	    s = new String(s.charAt(0) + e.str.substring(1));
+	    RESULT =  new String("get" + s + "()");
+	  } else {
+	    RESULT = e.str;
+	  }
+*/
+	  RESULT = e.str;
+	:}
+
+        | Argument:e1 ARGUMENTINPUT:e2
+	{:
+/*
+          if(e2.isName == true) {
+            s = e2.str.toUpperCase();
+            s = new String(s.charAt(0) + e2.str.substring(1));
+            RESULT =  e1 + new String("get" + s + "()");
+          } else {
+            RESULT = e1 + e2.str;
+          }
+*/
+	  RESULT = e1 + e2.str;
+	:}
+        ;
+
+
+Parts ::= 
+	{: RESULT = new Vector(); :}
+	| Parts:ps Part:p
+	{:
+	  RESULT = ps;
+	  RESULT.addElement(p); 
+	:}
+	;
+
+Part ::= PART IDENTIFIER:id1 EXTENDS Name:id2 LCPAREN ClassContents:c RCPAREN
+	{: 
+	  //System.out.println("Part"); 
+
+	  RESULT = new PartClass();
+	  RESULT.isTopLevel = false;
+	  RESULT.access = "protected ";
+	  RESULT.superClass = id2;
+	  RESULT.name = id1;
+	  RESULT.contents = c;
+	  RESULT.table = new Hashtable();
+          /* initializeTable(RESULT.table); */
+          if( !id2.equals("CompositeShape") ) {	// CompositeShape is root
+	    initializeTable(RESULT, id2);
+	  }
+	:}
+
+	| PART IDENTIFIER:id1 EXTENDS Name:id2 IMPLEMENTS InterfaceList:l LCPAREN ClassContents:c RCPAREN
+        {:
+          //System.out.println("Part");
+
+          RESULT = new PartClass();
+          RESULT.isTopLevel = false;
+          RESULT.access = "protected ";
+          RESULT.superClass = id2;
+          RESULT.name = id1;
+          RESULT.contents = c;
+          RESULT.table = new Hashtable();
+          /* initializeTable(RESULT.table); */
+          if( !id2.equals("CompositeShape") ) {	// CompositeShape is root
+	    initializeTable(RESULT, id2);
+	  }
+	  RESULT.interfaceList = l;
+        :}
+
+	| PART IDENTIFIER:id1 IMPLEMENTS InterfaceList:l LCPAREN ClassContents:c RCPAREN
+        {:
+          //System.out.println("Part");
+
+          RESULT = new PartClass();
+          RESULT.isTopLevel = false;
+          RESULT.access = "protected ";
+          RESULT.superClass = null;	// no superclass
+          RESULT.name = id1;
+          RESULT.contents = c;
+          RESULT.table = new Hashtable();
+          /* initializeTable(RESULT.table); */
+	  RESULT.interfaceList = l;	// implements interface
+        :}
+
+	;
+
+Methods ::= BEGIN_JAVA MethodsInputs:e END_JAVA
+	{: 
+	  RESULT = new MethodsClass();
+	  RESULT.code = e;
+	  //System.out.println("Methods"); 
+	:}
+	;
+
+MethodsInputs ::= METHODSINPUT:e
+	{: RESULT = e; :}
+	| MethodsInputs:e1 METHODSINPUT:e2
+	{: RESULT = e1 + e2; :}
+	;
+
+
+Name ::= IDENTIFIER:i
+	{: RESULT = i; :}
+	| DOTTEDNAME:n
+	{: RESULT = n; :}
+	;
+
+InterfaceList ::= Name:n
+	{: RESULT = n; :}
+	| InterfaceList:l COMMA Name:n
+	{: RESULT = l + ", " + n; :}
+	;

@@ -1,0 +1,1 @@
+java -classpath .:..:/home/lsmith/cs594/lab003 selectText $*

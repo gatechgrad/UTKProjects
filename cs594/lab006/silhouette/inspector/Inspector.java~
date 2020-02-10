@@ -1,0 +1,395 @@
+package silhouette.inspector;
+
+import java.awt.*;
+import java.awt.Color.*;
+import java.awt.event.*;
+import javax.swing.*;
+import javax.swing.colorchooser.*;
+
+import silhouette.shapes.*;
+import silhouette.interactors.*;
+
+import java.awt.event.KeyEvent;
+
+import java.lang.reflect.*;
+import java.lang.SecurityManager.*;
+import java.util.*;
+
+import silhouette.constraints.*;
+
+public class Inspector extends SilOneShotInteractor {
+
+  /**
+   * a hashtable which keeps track of all the existed inspector window
+   */
+   public static Hashtable iWindows = new Hashtable();
+  /**
+   * count for the number of inspector window ever created
+   * used for determine the locationof new inspector window
+   */
+  int count = 0;
+  
+  /**
+   * for inspecting the property from constraint debugger window
+   */
+  inspectPropertyBehavior myPropertyBehavior = new inspectPropertyBehavior();
+  
+
+  public inspectPropertyBehavior getPropertyBehavior() {
+	return myPropertyBehavior;
+  }
+
+  public static void update() {
+	 // update all the existed inspector window
+         Iterator iter = (Iterator) Inspector.iWindows.values().iterator();
+         while(iter.hasNext()) {
+         	Inspector.InspectorWindow me = 
+                                (Inspector.InspectorWindow) iter.next();
+                me.displayProperty(me.parentObj);
+         }
+  }
+
+  public class InspectorWindow {
+  // in class variables
+  Stack backList = new Stack();
+  JFrame frame;
+  CanvasShape sPanel;
+
+    /**
+     * Controls whether code to create the inspector window is called
+     */
+  boolean firstTime = true;
+  inspectNewObjectBehavior myNewObjectBehavior 
+      = new inspectNewObjectBehavior();
+  protected SilShape 	currentObj;
+  protected SilShape    parentObj;
+
+  JPanel buttonPane;
+  JButton backButton = new JButton("back");
+
+  // initialization--this code is called the first time the inspector
+    // is used. It could be called by the constructor but then an infinite
+    // loop would be created, because a canvas shape creates an inspector
+    // and INITWindow creates a canvas shape.
+  public void INITWindow(SilShape object) {
+    final Object toRemove = object;
+    frame  = new JFrame();
+    sPanel = new CanvasShape();
+    sPanel.getSilPanel().setWindowType(SilPanel.InspectorWindow);
+    sPanel.setPreferredSize(new Dimension(600, 400));
+
+    Dimension screenSize = Toolkit.getDefaultToolkit().getScreenSize();
+    Dimension frameSize  = frame.getSize();
+    if (frameSize.height > screenSize.height) {
+      frameSize.height   = screenSize.height;
+    }
+    if (frameSize.width > screenSize.width) {
+      frameSize.width    = screenSize.width;
+    }
+    frame.setBounds( 0, 0, 600, 400 );
+    frame.setLocation(
+      (screenSize.width  - frameSize.width )/2 + 200 + count,
+      (screenSize.height - frameSize.height)/2 - 300 + count);
+    count = count + 10;  
+    frame.setTitle(object.getName() + " Property Inspector");
+
+    JScrollPane sp = new JScrollPane(sPanel.getSilPanel());  // scrollable
+    sp.setPreferredSize(new Dimension(500, 400));
+    //backButton = new JButton("Back");
+    backButton.addActionListener(new ActionListener() {
+      public void actionPerformed(ActionEvent e) {
+        // check if there are element in the backList
+        if(!backList.empty()) {
+          currentObj = (SilShape)backList.pop();
+          reshow(currentObj);
+	}
+      }
+    });
+    backButton.setMnemonic(KeyEvent.VK_B);
+
+    JButton closeButton = new JButton("Exit");
+    closeButton.addActionListener(new ActionListener() {
+      public void actionPerformed(ActionEvent e) {
+       	sPanel.removeAll();
+	frame.setVisible(false);
+	//clean backlist
+	backList.removeAllElements();
+	Inspector.iWindows.remove(toRemove);
+      }
+      });
+    closeButton.setMnemonic(KeyEvent.VK_E);
+
+    // add "help" button,  used to bring up the helper frame.
+    JButton helpButton = new JButton("Help");
+    helpButton.addActionListener(new ActionListener() {
+      public void actionPerformed(ActionEvent e) {
+        Helper.showHelper();
+      }
+    });
+    helpButton.setMnemonic(KeyEvent.VK_H);
+   
+
+    buttonPane = new JPanel();
+    buttonPane.add(backButton);
+    backButton.setEnabled(false);  // default setting for backButton is invalid
+    buttonPane.add(closeButton);
+    closeButton.setDefaultCapable(false); // focus on neither button at beginning
+    buttonPane.add(helpButton);
+    helpButton.setDefaultCapable(false);
+
+    frame.getContentPane().add(sp, BorderLayout.CENTER);
+    frame.getContentPane().add(buttonPane, BorderLayout.SOUTH);
+
+    frame.addWindowListener( new WindowAdapter() {
+      public void windowClosing(WindowEvent e) {
+      sPanel.removeAll();
+      frame.setVisible(false);  // essential, otherwise window does not show
+      //clean backlist
+      backList.removeAllElements();
+      Inspector.iWindows.remove(toRemove);
+
+      }
+    });
+  }
+
+  protected void ShowNewFrame () {
+    sPanel.removeAll();
+    sPanel.repaint();
+    frame.pack();
+    frame.setVisible(true);
+    frame.setState(frame.NORMAL);
+  }
+
+  protected InspectorWindow(SilShape object) {
+	if (firstTime) {
+           INITWindow(object);
+           firstTime = false;
+       }
+  }
+
+/* give out the modifier for class */
+  String  printModifiers(Object o) {
+               Class c = o.getClass();
+               int m = c.getModifiers();
+	       if (Modifier.isPublic(m) && Modifier.isAbstract(m))
+	       	  return (new String("public abstract"));
+	       else if (Modifier.isPublic(m) && Modifier.isFinal(m))
+	          return (new String("public final"));
+               else if (Modifier.isPublic(m))
+                  return (new String("public"));
+               else if (Modifier.isAbstract(m))
+                  return (new String("abstract"));
+               else if (Modifier.isFinal(m))
+                  return (new String("final"));
+
+               return null;
+
+  }
+
+/*
+ * use for redispaly the content when press back button
+ */
+  protected void reshow(SilShape obj) {
+
+    displayProperty(obj);
+
+  }
+
+  protected void firstshow(SilShape obj) {
+     // push the previous obj having been viewed into backList
+    if(parentObj != null && parentObj != obj)
+       backList.push(parentObj);
+    displayProperty(obj);
+  }  
+     
+/*
+ * core method for displaying all the properties
+ */
+   protected void displayProperty(SilShape obj) {
+      if (obj != null) {
+	  // push the previous obj having been viewed into backList
+	  //if(parentObj != null && parentObj != obj)
+	  //  backList.push(parentObj);
+	  // enable the back button if backList isn't empty
+	  if(!backList.empty()){   
+	    backButton.setEnabled(true);
+	  }
+	  else{
+	    backButton.setEnabled(false);
+	  } 	    
+	  
+	  ShowNewFrame();
+
+         // object's class type
+         Class  c = obj.getClass();
+	 String className = c.getName();
+          // its parent
+         BoxShape parent = (BoxShape)obj.getParent();
+	 
+	 TextShape classText   = new TextShape(10, 10, "Instance of <" +
+				printModifiers(obj) + " " + className + ">");
+         sPanel.add(classText);
+
+         if (parent != null) {
+	    TextShape partName = new TextShape(10, 30, "Part of");
+	    sPanel.add(partName);
+            TextShape parentName;
+            parentName = new ObjectText(65, 30, " <" + parent.toString() + ">", parent, this);
+	    // set its color to blue
+	    parentName.setLineColor(Color.blue);
+            sPanel.add(parentName);
+         }
+         else {
+            TextShape parentName = new TextShape(10, 30, "No Parent");
+            sPanel.add(parentName);
+         }
+
+       // object's properties
+       TextShape p = new TextShape(10, 50, "Properties:");
+       sPanel.add(p);
+       // a list for storing all the fields
+       LinkedList allFields = new LinkedList();
+       // traverse the class and all its superclass to get fields
+       while(c != null) {
+        Field[] tmpFields = c.getDeclaredFields();
+        // add each field in current class to a list
+        for(int j = 0; j < tmpFields.length; j++) {
+          allFields.add(tmpFields[j]);
+        }
+        c = c.getSuperclass();
+       }
+
+       try {
+          int count = 0;
+          for (int i = 0; i < allFields.size(); i++) {
+            Field curField = (Field) allFields.get(i);
+            //set field's accessibility to true
+            curField.setAccessible(true);
+            // get field's value
+            Object tmp = curField.get(obj);
+            // get field's type
+            Class typeClass = curField.getType();
+
+            // judge the type of each property
+            if(tmp instanceof silhouette.constraints.property) {
+	      property curProperty = (property) tmp;
+	      CompositeShape displayObject = curProperty.display(this);
+	      displayObject.setLeft(10);
+	      displayObject.setTop(70 + 20*count);
+	      sPanel.add(displayObject);
+              count++;
+	    }
+	  }
+       }
+       catch (IllegalAccessException e) {
+	   System.out.println(e);
+       }
+       sPanel.getSilPanel().updateUI();
+       frame.show();
+      }
+
+      // set current obj to object having been viewed
+      parentObj = obj;
+   }
+
+    /**
+     * Returns the behavior object that displays a new object in the
+     * inspector window.
+     */
+    public inspectNewObjectBehavior getNewObjectBehavior() {
+	return myNewObjectBehavior;
+    }
+
+    
+    /**
+     * A behavior that displays a new object in the inspector window
+     * when the user double clicks on the object's name
+     */
+    class inspectNewObjectBehavior extends SilOneShotInteractor {
+
+	inspectNewObjectBehavior() {
+	    super(new SilMouseEvent(MouseEvent.MOUSE_CLICKED, 
+				    SilMouseEvent.ANY_MODIFIER, 2));
+	}
+
+
+	/*
+	 * display the properties of the superClass of the current class
+	 */
+	public void actionPerformed(InputEvent ie) {
+	    if(getSelectedObject() instanceof ObjectText) {
+            
+	    firstshow(((ObjectText)getSelectedObject()).getObjectToDisplay
+	  ());
+	  
+	    }
+	 }   
+    }
+
+
+}
+    public Inspector() {
+	super(new SilKeyEvent(KeyEvent.KEY_PRESSED, KeyEvent.VK_F1));
+	//	INITWindow();
+        //constraintDebugger.startConstraintDebugger();
+    }
+
+
+/*
+ * put the mouse on the debugged object, then press F1 to show
+ * the inspector window
+ */
+   public void actionPerformed(InputEvent ke){
+     /*  if (firstTime) {
+	   INITWindow();
+	   firstTime = false;
+       }*/
+       InspectorWindow iWindow;  
+       CanvasShape canvas = (CanvasShape)getSelectedObject();
+       /* find the object to inspect */
+       SilShape objToInspect = canvas.findLeaf(getX(), getY());
+       if (objToInspect != null) {
+           //check the hashtable to see it has been in the hashtable
+           if(iWindows.containsKey(objToInspect)) {
+	   	iWindow = (InspectorWindow)iWindows.get(objToInspect);
+	   }
+	   else {
+	        iWindow = new InspectorWindow(objToInspect);
+       	   	// store it into the hashtable
+	   	iWindows.put(objToInspect, iWindow);
+	   }	
+	   iWindow.firstshow(objToInspect);
+       }	   
+   }
+
+      public String toString() {
+	return ("Inspector Interactor");
+    }
+
+    /**
+     * A behavior that displays an object in a new inspector window, 
+     * which is the owner of a property
+     * when the user double clicks on the tiny circle in the constraint
+     * debugger window which represents a property
+     */
+    class inspectPropertyBehavior extends SilOneShotInteractor {
+
+        inspectPropertyBehavior() {
+            super(new SilMouseEvent(MouseEvent.MOUSE_CLICKED,
+                                    SilMouseEvent.ANY_MODIFIER, 2));
+        }
+
+
+        /*
+         * display the properties of the superClass of the current class
+         */
+        public void actionPerformed(InputEvent ie) {
+         InspectorWindow iWindow = new InspectorWindow(
+	 	((AbstractSilShape)getSelectedObject()).getObjToPresent());
+         iWindow.firstshow(((AbstractSilShape)getSelectedObject()).getObjToPresent());
+         }
+    }
+  
+}
+
+

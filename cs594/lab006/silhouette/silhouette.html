@@ -1,0 +1,36 @@
+<HTML>
+<HEAD>
+<META HTTP-EQUIV="Content-Type" CONTENT="text/html; charset=windows-1252">
+<TITLE>Jbuilder Project silhouette.jpr</TITLE>
+</HEAD>
+<BODY>
+<H1>Project Notes</H1>
+<HR>
+<FONT SIZE=+1>
+<STRONG>Project:  </STRONG>Silhouette<BR>
+<STRONG>Author: </STRONG>Brad Vander Zanden<BR>
+<STRONG>Company: </STRONG>UTK<BR>
+<STRONG>Description: </STRONG><BR>
+Products that allows the creation of 2D graphical objects and behaviors
+<HR>
+<STRONG>Things to do...</STRONG><BR>
+</FONT>
+<UL>
+<!-- Edit this section to keep track of your to do items -->
+<li> The design of a Silhouette canvas is as follows:
+  <ol>
+  <li> The Silhouette canvas maintains a list of z-depths. Each z-depth
+      consists of a z-number and a list of objects at that depth.
+  <li> A Silhouette canvas maintains a composite shape that holds the state
+      information for a Silhouette canvas. This composite shape is made the
+      parent for all objects added to a Silhouette canvas. It would be better
+      to make the canvas itself be the parent for these objects, but that
+      is impossible since a Silhouette canvas cannot implement the SilShape
+      interface. By making the composite shape the objects' parent, they
+      can at least query all of the canvas's state information transparently,
+      as if it were a SilShape. If they need access to specific canvas
+      information, they should call the getCanvas method instead.
+</UL>
+</BODY>
+</HTML>
+ 

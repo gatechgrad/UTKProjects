@@ -1,0 +1,628 @@
+package silhouette.constraints;
+
+import silhouette.shapes.*;
+import silhouette.inspector.*;
+import java.awt.Color;
+
+/**
+ * The abstract class for constrained properties. All constrained
+ * properties should subclass this property and add a value field
+ * with a type specific to that property (e.g., an integer field
+ * for an integer property.
+ */
+
+import java.util.*;
+
+public abstract class property {
+
+  /**
+   * A "dummy" constraint that is used to indicate whether a property
+   * is currently being brought up-to-date. If a property's value is
+   * requested while it is being brought up-to-date, then we know that
+   * we have a set of circular constraints and that we should just
+   * return its value. inProgress will be assigned to the invalidConstraint
+   * field, which is the field used to determine whether a property
+   * is up-to-date, out-of-date, or in the process of being brought up-to-date
+   */
+  static constraint inProgress = new constraint() {
+    public void formula(constrainedObject self) {}
+  };
+
+  /**
+   * A "dummy" constraint that is used to indicate that no dependencies
+   * should be created at the current time. This constraint is used when
+   * a constraint passes control to notification routines. When the
+   * notification routines execute, requests for properties should not
+   * result in dependencies being created from the requested properties to 
+   * the constraint.
+   **/
+  static constraintStackInfo doNotCreateDependencies 
+    = new constraintStackInfo(null, null, null);
+
+  /**
+   * The object that owns this property
+   */
+
+  SilShape owner = null;
+
+  /**
+   * The last constraint to mark this property out-of-date. This
+   * field doubles as a mark field. If the field is null, it means
+   * the property is up-to-date; otherwise the property is out-of-date
+   * and should be brought up-to-date by evaluating the constraint
+   * pointed to by invalidConstraint
+   */
+  constraint invalidConstraint = null;
+
+  /**
+   * whether the property is up-to-date
+   */
+  public boolean isValid() {
+    if(invalidConstraint == null) {
+      return true;
+    }
+    else return false;
+  }
+
+  /**
+   * The list of constraints that depend on this property
+   */
+  List dependents = null;
+
+  /**
+   * The list of constraints that set this property
+   */
+  List constraints = null;
+
+  /**
+   * return iterator of constraints list
+   */
+  public ListIterator getConstraints() {
+    if (constraints != null)
+      return constraints.listIterator();
+    return null;
+  }
+
+  /**
+   * The name of the property
+   */
+  String name = null;
+
+
+  public property(String nm) {
+    name = nm;
+  }
+
+  /**
+   * Add a constraint to this property's dependents list
+   */
+  void addDependent(constraint cn) {
+    if (dependents == null)
+      dependents = new LinkedList();
+    dependents.add(cn);
+
+    //System.out.println(this.toString() + " add dependent " + cn.toString());
+
+    //add to the Added hashtable
+    String propertyName =  this.toString();
+    String cnName = cn.getName();
+    String totalName = propertyName + cnName;
+    constraintDebugger.Added.put(totalName, new EdgeElement(this, cn, true));
+  }
+
+  /**
+   * Return a list-iterator of this property's dependents
+   */
+  ListIterator getDependents() {
+    if (dependents != null)
+      return dependents.listIterator();
+    else
+      return null;
+  }
+
+  /**
+   * Remove a constraint from this property's dependents list
+   */
+  void removeDependent(constraint cn) {
+    dependents.remove(cn);
+    //add to the Deleted hashtable
+    String propertyName =  this.toString();
+    String cnName = cn.getName();
+    String totalName = propertyName + cnName;
+    constraintDebugger.Deleted.put(totalName, new EdgeElement(this, cn, true));
+  }  
+
+
+  /**
+   * Mark the property as out-of-date and then use a depth-first
+   * search to mark all constraints
+   * that depend on this property as out-of-date
+   */
+  void mark() {
+    // only mark if property is marked up-to-date
+    if (invalidConstraint == null) {
+      markHelper(property.inProgress);
+      // if the application set this property, then we want to
+      // indicate that it is up-to-date by setting its invalidConstraint
+      // field back to null (mark set it to property.inProgress)
+      if (constraint.constraintStack.empty()
+        || (constraint.constraintStack.peek() == 
+          property.doNotCreateDependencies))
+        invalidConstraint = null;
+    }
+  }
+
+  void markHelper(constraint invalidatingConstraint) {
+    //  ListIterator dependentProperties = getDependents();
+    constraint cn;
+
+    // The property could have been previously marked out-of-date
+    // by another constraint. If so, then its dependents have
+    // already been marked out-of-date and we don't have to continue
+    // the mark process
+    boolean needToMark = (invalidConstraint == null ? true : false);
+
+    // even if invalidConstraint already points to another constraint,
+    // we make invalidConstraint point to this constraint. That way
+    // we maintain the invariant that invalidConstraint always points
+    // to the *last* constraint to invalidate the property.
+    invalidConstraint = invalidatingConstraint;
+
+    // perform the dependent marking using depth-first search
+    if (needToMark) {
+      owner.invalidate(); // indicate that object needs to be redisplayed
+
+      ListIterator dependentProperties = getDependents();
+      if (dependentProperties != null) {
+        while (dependentProperties.hasNext()) {
+          cn = (constraint)dependentProperties.next();
+          if (cn.valid == true){
+            cn.mark();
+          }  
+        }
+      }
+    }
+  }
+
+/**
+ * suspend the process of constraint evalution when needed
+ */
+  void callWait() {
+
+    constraintDebugger.setOperation(constraintDebugger.NULL);
+    constraintDebugger.setBlocked(this);
+    //System.out.println("set blocked =================="+this.toString());
+    try {
+      if (constraintDebugger.getState() == constraintDebugger.START) {
+        constraintDebugger.setState(constraintDebugger.RUNNING);
+      }
+      //System.out.println(this.toString()+" wait()--------");
+      //constraintDebugger.doEventDispatch = true;
+      // constraint graph need to be updated
+      constraintDebugger.needUpdate = true;
+
+      // prevent constraint dependencies from being created while debugger
+      // is executing
+      constraint.constraintStack.push(property.doNotCreateDependencies);
+      // wake up the constraint Debugger
+      if(constraintDebugger.cnDebugger != null) {
+        synchronized(constraintDebugger.cnDebugger) {
+          constraintDebugger.cnDebugger.notify();
+        }
+      }
+      // let constraint evaluation thread wait 
+      wait();
+    } catch(InterruptedException e) {
+      System.err.println("Interrupted");
+    }
+
+    // System.out.println(this.toString()+" has been notified");                
+
+  }
+
+  /**
+   * record a dependency to the requesting property and then, if
+   * necessary, bring the property up-to-date by evaluating its constraint
+   */
+  void validate() {
+    // if CONTINUE set instead of NEXT, it should be true
+    boolean tempContinue = false;
+    // If a constraint requested this property, add the constraint
+    // to this property's dependency list
+    //System.out.println(this.toString() + " will recordDependency");
+    recordDependency();
+
+    if(constraintDebugger.cnDebugger != null &&
+      constraintDebugger.getState() == constraintDebugger.RUNNING) {
+      // property will suspend here when calling 'STEP'
+      synchronized(this) {
+        if(constraintDebugger.getOperation() == constraintDebugger.STEP) {
+          callWait();
+        }
+        else if(constraintDebugger.getOperation() == constraintDebugger.NEXT) {
+          callWait();
+          tempContinue = true;	
+          // let process continue without suspension until this local
+          // sweep process ends.
+          constraintDebugger.setOperation(constraintDebugger.CONTINUE);
+        }
+      }
+    }		
+
+
+    // BVZ--6/25/01--Constraints were getting evaluated prematurely using
+    // the following method. As a result, I changed the code so that a
+    // special request must be made to force the constraints on the constraint
+    // queue to be evaluated. The draw method for a canvas will automatically
+    // make this request and the user can do so as well. Under the new
+    // approach, a constraint will be re-evaluated if a property is requested
+    // and it is known that that constraint affects the property
+    //
+    // even if the property is up-to-date, there is a chance that there
+    // is a constraint on the constraint queue that could set the value
+    // of this property (for example, the constraint may never have been
+    // evaluated and so hasn't had a chance to record this property as
+    // an output).
+    /*
+       if (invalidConstraint == null) {
+    // bring any invalid constraints on the constraint queue up-to-date
+    constraint.Evaluate();   
+    }
+     */
+    // if the property is in the process of being evaluated, then we have
+    // a set of circular constraints and we should return the property's
+    // old value; otherwise we should evaluate the property
+    if ((invalidConstraint != null) 
+      && (invalidConstraint != property.inProgress)) {
+      constraint temp = invalidConstraint;
+      invalidConstraint = property.inProgress;
+      temp.validate();
+      invalidConstraint = null;
+
+      // return the operation  to NEXT
+      if(tempContinue) {
+        constraintDebugger.setOperation(constraintDebugger.NEXT);
+      }	
+
+      if(constraintDebugger.cnDebugger != null &&
+        constraintDebugger.getState() == constraintDebugger.RUNNING) {
+        // property will suspend here when calling 'STEP'
+        synchronized(this) {
+          if(constraintDebugger.getOperation() == constraintDebugger.STEP ||
+            constraintDebugger.getOperation() == constraintDebugger.NEXT) {
+            callWait();
+          }
+        }
+      }	
+
+    }
+    // return the operation  to NEXT
+    if(tempContinue) {
+      constraintDebugger.setOperation(constraintDebugger.NEXT);
+    }	
+  }
+
+
+  /**
+   * akdds a constraint to this property's dependents list if
+   * the constraint is not already there
+   */
+  void recordDependency() {
+    // we have to have a constraint in order to record a dependency. If
+    // a constraint requested this property's value, then the constraint
+    // will be on top of the constraint stack. If the application has
+    // requested this property's value, then the constraint stack will
+    // be empty and we should not record a constraint
+    if (!constraint.constraintStack.empty() &&
+      (constraint.constraintStack.peek() != 
+       property.doNotCreateDependencies)) 
+    {  
+      constraintStackInfo info
+        = (constraintStackInfo)constraint.constraintStack.peek();
+      if (info.inputs.hasNext()) {
+        // check whether the dependency has already been recorded
+        property nextInput = (property)info.inputs.next();
+        if (nextInput != this) {
+          // dependency has not been recorded--replace the existing input
+          // with this property
+          info.inputs.set(this);
+
+          // add the constraint to this property's dependents list
+          this.addDependent(info.cn);
+
+          // remove the constraint from nextInput's dependents list
+          nextInput.removeDependent(info.cn);
+	  //System.out.println(nextInput.toString() + "remove dependents " + info.cn.toString());
+        }
+      }
+      // we've reached the end of the input list so add this property
+      // to the input list and add the constraint to this property's
+      // dependents list
+      else {
+        info.inputs.add(this);
+        // skip past this new element
+        //	info.inputs.next();
+        this.addDependent(info.cn);
+      }
+    }
+  }
+
+  /**
+   * Adds this property to a constraint's list of outputs. The owner
+   * parameter is the object that owns this property. recordOutput
+   * returns true if the property is added to the constraint's list of
+   * outputs and false otherwise.
+   */
+    /*
+  boolean recordOutput(constrainedObject owner) {
+    boolean outputAdded = false;
+    // Its possible that the application rather than a constraint
+    // is setting the value of this property. We only want to
+    // add the property to a constraint's output list if a constraint
+    // is setting the property
+    if (!constraint.constraintStack.empty()
+      && (constraint.constraintStack.peek() != 
+        property.doNotCreateDependencies)) {
+
+      constraintStackInfo info
+        = (constraintStackInfo)constraint.constraintStack.peek();
+      if (info.outputs.hasNext()) {
+        // check whether the output has already been recorded
+        outputInfo nextOutput = (outputInfo)info.outputs.next();
+        if (nextOutput.outputProperty != this) {
+          // output has not been recorded--replace the existing output
+          // with this property and add the constraint to this property's
+          // constraints list
+          info.outputs.set(new outputInfo(owner, this));
+          if (this.constraints == null)
+            this.constraints = new LinkedList();
+	  // even though we think that we're adding a new output for
+	  // this constraint, check to make sure that this constraint
+	  // is not already on the new output's constraint list. The
+	  // above check is conservative and it could be that the
+	  // new output is not a new output after all
+          if (!this.constraints.contains (info.cn)) {
+            this.constraints.add(info.cn);
+	    // since this property did not have the constraint recorded, it
+	    // really is a new output. There's
+	    // a good chance that this property is being changed unexpectly.
+	    // We therefore need to see whether this property is out-of-date,
+	    // and if so, mark its dependents invalid
+	    // if (this.invalidConstraint == null)
+	    //  mark(property.inProgress);
+
+            //add to the Added hashtable
+            String propertyName =  this.toString();
+            String cnName = info.cn.getName();
+            String totalName = cnName + propertyName;
+            constraintDebugger.Added.put(totalName, 
+              new EdgeElement(this, info.cn, false));
+          }  
+          outputAdded = true;
+        }
+      }
+      // we've reached the end of the output list so add this property
+      // to the output list and add the constraint to this property's
+      // dependents list
+      else {
+        info.outputs.add(new outputInfo(owner, this));
+        outputAdded = true;
+        if (this.constraints == null)
+          this.constraints = new LinkedList();
+        this.constraints.add(info.cn);
+        //add to the Added hashtable
+        String propertyName =  this.toString();
+        String cnName = info.cn.getName();
+        String totalName = cnName + propertyName;
+        constraintDebugger.Added.put(totalName, 
+          new EdgeElement(this, info.cn, false));
+
+        // skip past this new output
+        //	info.outputs.next();
+
+        // since this property has not been recorded as an output, there's
+        // a good chance that this property is being changed unexpectly.
+        // We therefore need to see whether this property is out-of-date,
+        // and if so, mark its dependents invalid
+        // if (this.invalidConstraint == null)
+        //  mark(property.inProgress);
+      }
+    }
+    return outputAdded;
+  }
+    */
+
+  boolean recordOutput(constrainedObject owner) {
+    boolean outputAdded = false;
+    // Its possible that the application rather than a constraint
+    // is setting the value of this property. We only want to
+    // add the property to a constraint's output list if a constraint
+    // is setting the property
+    if (!constraint.constraintStack.empty()
+      && (constraint.constraintStack.peek() != 
+        property.doNotCreateDependencies)) {
+
+      constraintStackInfo info
+        = (constraintStackInfo)constraint.constraintStack.peek();
+      if (info.outputs.hasNext()) {
+        // check whether the output has already been recorded
+        outputInfo nextOutput = (outputInfo)info.outputs.next();
+        if (nextOutput.outputProperty != this) {
+	    // output has not been recorded--take the following actions:
+	    // 1) notify the debugger that the output list has changed
+	    // 2) remove the constraint from the previous property's
+	    //    constraints list (a constraint can appear more than once
+	    //    on this list--we only remove the first occurrence)
+	    // 3) replace the existing output on the outputs list with this 
+	    //    property 
+	    // 4) add the constraint to this property's constraints list
+
+	    nextOutput.outputProperty.constraints.remove(info.cn);
+	    info.outputs.set(new outputInfo(owner, this));
+
+	    if (this.constraints == null)
+		this.constraints = new LinkedList();
+
+            this.constraints.add(info.cn);
+
+	    // if this property is marked up-to-date, then there's
+	    // a good chance that this property is being changed unexpectly.
+	    // We therefore need to see whether this property is out-of-date,
+	    // and if so, mark its dependents invalid. Note that while a
+	    // property is being evaluated, its invalidConstraint field
+	    // is marked as inProgress, meaning that the mark routine
+	    // will not be called if a constraint is already evaluating this
+	    // property
+	    if (this.invalidConstraint == null)
+		mark();
+
+	    outputAdded = true;
+	}
+      }
+      // we've reached the end of the output list so add this property
+      // to the output list and add the constraint to this property's
+      // dependents list. Also notify the debugger of the change.
+      else {
+        info.outputs.add(new outputInfo(owner, this));
+        outputAdded = true;
+        if (this.constraints == null)
+          this.constraints = new LinkedList();
+        this.constraints.add(info.cn);
+
+        //add to the Added hashtable
+        try {
+            //PropertyC  ommunicator pc =
+	    //PropertyCommunicator.getPropertyCommunicator();
+	    //pc.AddToAdded(info.cn.toString(),this.toString());
+        } catch (Exception e) { e.printStackTrace(); }
+    
+	// if this property is marked up-to-date, then there's
+	// a good chance that this property is being changed unexpectly.
+	// We therefore need to see whether this property is out-of-date,
+	// and if so, mark its dependents invalid. Note that while a
+	// property is being evaluated, its invalidConstraint field
+	// is marked as inProgress, meaning that the mark routine
+	// will not be called if a constraint is already evaluating this
+	// property
+        if (this.invalidConstraint == null)
+	    mark();
+      }
+    }
+    return outputAdded;
+  }
+
+ /**
+  * return the property name as "owner's propertyname" 
+  */
+  public String toString() {
+    return owner.getName() + "\'s " + name;
+  }
+
+  /**
+   * Returns the owner of this property
+   */
+  public SilShape getOwner() {
+    return owner;
+  }
+
+  /**
+   * Sets the owner of this property
+   */
+  public void setOwner(SilShape o) {
+    owner = o;
+  }
+
+
+  /**
+   * A helper function for setValue that performs housekeeping functions
+   * that are common to all the property's setValue methods.
+   */
+  void setValueHelper() {
+    constraint.constraintStack.push(doNotCreateDependencies);
+    owner.invalidate();
+    mark();
+    // if property has been set new value, make it up-to-date
+    if (constraint.constraintStack.empty()
+      || (constraint.constraintStack.peek() ==
+	  property.doNotCreateDependencies)) {
+      invalidConstraint = null;
+    }
+
+    constraint.constraintStack.pop();
+
+    // do not create dependencies while maintainance operations are
+    // in progress. It is possible for maintainance operations to 
+    // request the values of properties and we do not want dependencies
+    // being "charged" to the current constraint
+    if(constraintDebugger.cnDebugger != null &&
+      constraintDebugger.getState() == constraintDebugger.RUNNING) {
+      // call wait for the output property
+      synchronized(this) {
+        if(constraintDebugger.getOperation() == constraintDebugger.STEP ||
+          constraintDebugger.getOperation() == constraintDebugger.NEXT) {
+
+          callWait();
+        }      
+      } 
+    }
+
+  }
+
+
+  /**
+   * Create a composite shape that displays the name and value of this 
+   * property. The value should have an interactor attached to it that
+   * makes it editable.
+   * 
+   * display is implemented using the strategy pattern. It takes care
+   * of creating a property's "preamble", which consists of 
+   * the property type, name, and the colon. It then calls a 
+   * displayPropertyValue method which is unique to each property and
+   * which creates an object that displays the property's value. 
+   * A property's display object should produce the following printed
+   * format:
+   * 
+   *   propertyName propertyType: propertyValue
+   *
+   */
+
+  public CompositeShape display(Inspector.InspectorWindow inspectorObj) {
+
+    CompositeShape resultObj = new CompositeShape();
+    PopMenu pop = new PopMenu(this);
+    // initial left position
+    int leftPos = 0;
+    // property type
+    TextShape ts1 = new TextShape(leftPos, 0, getPropertyType());
+    leftPos += (int)ts1.getWidth();
+    resultObj.add(ts1);
+    // property name
+    TextShape ts2 = new TextShape(leftPos, 0, this.name + ": ");
+    ts2.addInteractor(pop);
+    if(this.getConstraints() != null) {
+    	ts2.setLineColor(new Color(188, 21, 200));
+    }	
+    leftPos += (int)ts2.getWidth();
+    resultObj.add(ts2);
+    // proerty value
+    BoxShape PropertyValueObject = displayPropertyValue(inspectorObj);
+    PropertyValueObject.setLeft(leftPos);
+    PropertyValueObject.setTop(0);
+    resultObj.add(PropertyValueObject);
+    resultObj.setWidth(PropertyValueObject.getRight());
+    resultObj.setHeight(PropertyValueObject.getHeight());
+    return resultObj;
+  }
+
+  /**
+   * Return the string name of the property's type
+   */
+  abstract public String getPropertyType();
+
+  /**
+   * Return an object that display's the property's value and that
+   * allows the value to be edited
+   */
+  abstract public BoxShape displayPropertyValue(Inspector.InspectorWindow inspectorObj);
+
+}

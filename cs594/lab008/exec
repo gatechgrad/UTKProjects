@@ -1,0 +1,1 @@
+java -classpath .:..:/home/lsmith/cs594/lab001 ThermometerApplication $1 $2 $3 

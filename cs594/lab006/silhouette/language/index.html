@@ -1,0 +1,276 @@
+<!doctype html public "-//w3c//dtd html 4.0 transitional//en">
+<html>
+<head>
+   <meta http-equiv="Content-Type" content="text/html; charset=iso-8859-1">
+   <meta name="GENERATOR" content="Mozilla/4.76 [en] (X11; U; Linux 2.4.2-2 i686) [Netscape]">
+</head>
+<body>
+
+<center>
+<h1>
+The Silhouette Scriptiong Language</h1></center>
+
+<center>
+<h2>
+October 25, 2001</h2></center>
+
+<h1>
+Overview</h1>
+The Silhouette scripting language is designed to make it easier to specify
+new composite shapes and to specify the formulas that compute the properties
+of these composite shapes. The scripting language can also be used to create
+primitive shapes, in which case it should help simplify the specification
+of formulas. In order to use the Silhouette scripting language, the programmer
+prepares a file that defines a new class. The file is then given to a parser
+which generates a .java file that has the same name as the class being
+created. The .java file can then be compiled and the class can be used
+like any other Silhouette class. The best way to demonstrate the language
+is to walk through an example. Here is a sample specification for a LabeledBox
+object:
+<h1>
+Sample Declaration</h1>
+
+<pre>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; // start the file with the package you would like the file to be placed in. The package is optional
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; package MovingLabelBox;
+
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; // next place your import statements. Import statements for silhouette.shapes.* and
+<font face="Courier New,Courier">&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; // silhouette.constraints.* are generated automatically by the parser so do not include import
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; // statements for either of these packages
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; import silhouette.interactors.*;
+
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; // only one object may be declared per file. All </font>objects start with a normal Java-like class
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; // declaration
+
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; class LabeledBox extends CompositeShape {
+
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; // first assign default values to all pre-defined properties. Pre-defined properties are properties
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; // that are declared in the superclass.
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; left = 10;
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; top = 20;
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; width = formula label.width + 10;
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; height = formula label.height + 10;
+
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; // next come new properties. Notice that new properties require a type declaration. They can
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; // can also be declared with the normal Java access modifiers.&nbsp;
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; public string value = "foo";
+
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; // properties that are declared readonly will have their get accessor declared public but their
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; // setAccessor declared protected. Hence the user of this object will only be able to read a
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; // readonly property
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; RectShape readonly fromObj;
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; protected static Bounds bbox = new bbox(10, 30, 40, 50);
+
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; // after the properties have been declared, the programmer can start declaring parts. parts
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; // should start with the part keyword&nbsp;
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; part frame extends RectangleShape {
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; left = 0;
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; top = 0;
+
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; // formulas can be attached to a property by typing a standard Java expression and prefixing
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; // it with the keyword &lt;b>formula&lt;/b>. Properties and parts can be referred to by their names
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; // rather than having to use accessor methods
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; width = formula parent.width;
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; height = formula parent.height;
+
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; // any code between the "begin java" and "end java" commands will be copied directly into the
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; // the source file. Note that you do have to use the accessor methods for the properties within
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; // the java block because this code is not analyzed by the parser.
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; begin java
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; bbox getBbox() {
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; return new bbox(getLeft(), getTop(), getWidth(), getHeight());
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; }
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; end java
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; }
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; part label extends TextShape {
+
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; text = formula parent.value;
+
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; begin java
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; // unfortunately we cannot yet handle pre-defined formulas as part of the scripting language
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; // so they must be added in a constructor defined by the programmer
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; public TextShape() {
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; addConstraint(new centerX(getParent()));
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; addConstraint(new centerY(getParent()));
+
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; }
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; }
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; begin java
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; LabeledBox(string v, int l, int t, RectShape obj) {
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; value.setValue(v);
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; left.setValue(l);
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; top.setValue(t);
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; fromObj.setValue(obj);
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; }
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; bbox getFrameBbox() {
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; return getFrame().getBbox();
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; }
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; end java
+&nbsp;}</pre>
+
+<h3>
+What The Parser Does</h3>
+The parser takes a specification and does a number of things to create
+a compilable, Silhouette object:
+<ol>
+<li>
+All parts are declared as inner classes of the object being created.</li>
+
+<li>
+All newly defined properties have get and set methods created for them.
+The access permissions on these methods are determined by the access protections
+declared by the programmer.</li>
+
+<li>
+All formulas are converted to constraint objects and property and part
+names are replaced with the appropriate get or set methods.</li>
+
+<li>
+An initialization block is created for the object and each of its part
+classes. The initialization block for the object creates instances for
+each of its parts and adds these instances to the object. It also creates
+an instance of each formula and adds these formula instances to the object.
+Since the scripting language uses an initialization block to set up the
+object, the programmer is free to define any type of constructor, including
+a zero argument constructor, between the "begin java" and "end java" blocks.</li>
+</ol>
+
+<h2>
+Properties</h2>
+
+<ol>
+<li>
+There are two types of properties: 1) predefined properties, and 2) new
+properties. Predefined properties are properties that are already declared
+by the object's superclass. New properties are properties that are being
+added to this object. For example, if a part is declared to be a rectangle,
+then left and top would be examples of predefined properties while a property
+called "value" would be a new property.</li>
+
+<li>
+Predefined properties must be assigned a value. Since predefined properties
+already have their access defined by the superclass, it is impermissible
+to declare new access rights in the object. Hence the only thing that can
+be provided for a predefined property is a value.</li>
+
+<li>
+New properties must be assigned a type. The programmer is free to provide
+a default value but is not required to provide a default value. If the
+programmer does not provide a default value, then a property is assigned
+a default value. Here are the default values that are used:</li>
+
+<ol>
+<li>
+integer: 0</li>
+
+<li>
+real number: 0.0</li>
+
+<li>
+string: ""</li>
+
+<li>
+character: a</li>
+
+<li>
+boolean: true</li>
+
+<li>
+non-primitive type: null</li>
+</ol>
+
+<li>
+A new property can have any legal Java type</li>
+
+<li>
+All properties have two accessor methods that are created for them by the
+parser: a get accessor method that returns the property's value and a set
+accessor method that sets the property's value.</li>
+
+<ul>
+<li>
+The protection levels on these methods (public, protected, private, or
+package) is determined by the accessor keyword.</li>
+
+<li>
+The names of these methods are obtained by taking the name of the property,
+capitalizing the first letter of the property, and appending the resulting
+name to "get" and "set". For example, a property named left would have
+accessor methods named getLeft and setLeft.</li>
+
+<li>
+The get method's return type is the type of the property. For example,
+if the property is declared to be an int, then the get method returns an
+int.</li>
+
+<br>The set method returns a pointer to the property's owner (i.e., the
+object to which the property belongs). Each set method takes one argument,
+which is the new value of the property.
+<li>
+The <b>readonly</b> keyword determines whether the property is both readable
+and writeable by the application, or only readable. Properties are always
+readable and writeable by the class. If a property is declared readonly
+and is also declared public, then its get method should be declared public
+but its set method should be declared protected.</li>
+</ul>
+</ol>
+
+<h2>
+Formulas</h2>
+
+<ol>
+<li>
+Every formula of the form:</li>
+
+<pre>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; type propertyName = formula code;</pre>
+is converted to a function of the form:
+<pre>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; addConstraint(new constraint () {
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; public void formula(constrainedObject self) {
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; <b>setPropertyName</b>(<b>code</b>);
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; }
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; });</pre>
+
+<p><br>where setPropertyName is the set method for the property. For example,
+the declaration:
+<pre>&nbsp;
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; int left = formula parent.width / 2 - width / 2;</pre>
+is converted to:
+<pre>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; addConstraint(new constraint () {
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; public void formula(constrainedObject self) {
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; setLeft(getParent().getWidth() / 2 - getWidth() / 2);
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; }
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; });</pre>
+</ol>
+
+<h1>
+
+<hr WIDTH="100%"></h1>
+
+<h1>
+Where To Find Additional Information</h1>
+The above information should be enough to get you started on your project.
+If you want to see a detailed specification of the grammar for the scripting
+language, see the&nbsp; <a href="grammar.html">grammar specification</a>
+. You can find a couple of sample files in silhouette/language/samples.
+<p>
+<hr WIDTH="100%">
+<h1>
+Running The Parser</h1>
+To run the parser on one of your files, type
+<pre>java silhouette.language.parser &lt; yourFile</pre>
+where yourFile is the name of your file. Currently you have to use stdin
+to process your file.
+<p>
+<hr WIDTH="100%">
+<h1>
+If You Have A Problem</h1>
+If you have a problem, send email to Mei Ran (ran@cs.utk.edu) describing
+your problem. Please cc me on any email you send to Mei. The parser is
+very picky about the order in which you present things to it so make sure
+that you first give it all the pre-defined properties, then the new properties,
+then the parts, and then your begin java block. The parser does not have
+very descriptive error messages yet. You can help Mei by telling her the
+types of descriptive error messages you would like to see.
+<br>&nbsp;
+</body>
+</html>

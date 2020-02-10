@@ -1,0 +1,1 @@
+java -classpath .:..:/home/hurst/gui/lab1/thermometer thermometer.ThermometerApplication $1 $2 $3 

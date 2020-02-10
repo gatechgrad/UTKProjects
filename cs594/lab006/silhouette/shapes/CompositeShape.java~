@@ -1,0 +1,450 @@
+package silhouette.shapes;
+
+import silhouette.shapes.*;
+import java.awt.*;
+import java.util.Vector;
+import java.util.Stack;
+import java.util.Enumeration;
+
+/**
+ * <p>
+ * CompositeShape is the workhorse of the Silhouette system. 
+ * A CompositeShape defines a coordinate space in which Shapes
+ * are displayed. Shapes are drawn relative to the origin of the
+ * composite shape. For example, if a shape has the coordinates (10, 20)
+ * and the composite shape has the coordinates (40, 60), then the
+ * shape will be drawn at coordinates (50, 80). Shapes can be added 
+ * to a composite shape using
+ * a variety of add methods and can be removed using a variety
+ * of remove methods.
+ * </p>
+ */ 
+public class CompositeShape extends BoxShape implements SilContainer {
+  /**
+   * List of Shapes this CompositeShape holds.
+   */
+  protected Vector shapes = new Vector(3,2);
+
+  /**
+   * The DisplayManager for this CompositeShape.
+   */
+  protected DisplayManager dispman;
+
+  /**
+   * Constructs a new CompositeShape with the specified parameters and 
+   * BagDisplay as the default DisplayManager.
+   */
+  public CompositeShape() {
+    dispman = new BagDisplay(this);
+    initializeBounds(0, 0, 0, 0);
+  }
+
+  /**
+   * Constructs a new CompositeShape with the specified parameters.
+   * @param dm 		the DisplayManager object
+   */ 
+  public CompositeShape(DisplayManager dm) {
+    dispman = dm;
+    initializeBounds(0, 0, 0, 0);
+  }
+
+  /**
+   * Constructs a new CompositeShape with the specified parameters. A
+   * default BagDisplay object is created as the display manager.
+   * @param x_in 	 the x coordinate 
+   * @param y_in 	 the y coordinate
+   * @param width_in	 the width 
+   * @param height_in	 the height
+   */ 
+  public CompositeShape(double x_in, double y_in, double width_in,
+    double height_in) {
+    initializeBounds(x_in, y_in, width_in, height_in);
+    dispman = new BagDisplay(this);
+  }
+
+  /**
+   * Constructs a new CompositeShape with the specified parameters.
+   * @param x_in 	 the x coordinate 
+   * @param y_in 	 the y coordinate
+   * @param width_in	 the width 
+   * @param height_in	 the height
+   * @param dm 		the DisplayManager object
+   */ 
+  public CompositeShape(double x_in, double y_in, double width_in,
+    double height_in, DisplayManager dm) {
+
+    initializeBounds(x_in, y_in, width_in, height_in);
+    dispman = dm;
+  }
+
+  /**
+   * Initializes the bounds of the composite shape 
+   */
+  protected void initializeBounds(double x_in, double y_in,
+    double width_in, double height_in) {
+    setLeft(x_in);
+    setTop(y_in);
+    setWidth(width_in);
+    setHeight(height_in);
+  }
+
+/*
+  public double getWidth() {
+    double wd = width.getValue();
+    // it's easy for the user to forget to provide a width for
+    // the composite shape--if they do, find the rightmost
+    // object in the composite object and use its rightside
+    // as the width 
+    if ((wd <= 0) && (width.getConstraints() == null)) {
+      Enumeration shapeIter = this.getShapes();
+      SilShape tempShape;
+      double maxRight = -1;
+
+      while (shapeIter.hasMoreElements()) {
+        tempShape = (SilShape)shapeIter.nextElement();
+        if (tempShape.getRight() > maxRight)
+          maxRight = tempShape.getRight();
+      }
+      wd = maxRight;
+    }
+    return wd;
+  }
+*/
+/*
+  public double getHeight() {
+    double ht = height.getValue();
+    // it's easy for the user to forget to provide a height for
+    // the composite shape--if they do, find the bottommost
+    // object in the composite object and use its bottomside
+    // as the height 
+    if ((ht <= 0) && (height.getConstraints() == null)) {
+      Enumeration shapeIter = this.getShapes();
+      SilShape tempShape;
+      double maxBottom = -1;
+
+      while (shapeIter.hasMoreElements()) {
+        tempShape = (SilShape)shapeIter.nextElement();
+        if (tempShape.getBottom() > maxBottom)
+          maxBottom = tempShape.getBottom();
+      }
+      ht = maxBottom;
+    }
+    return ht;
+  }
+*/
+
+  /**
+   * Adds a Shape to this CompositeShape.
+   * @param newshape 	the Shape to be added
+   */
+  public SilShape add(SilShape newshape) {
+    newshape.setParent(this);
+    invalidate();
+    shapes.addElement(newshape);
+    return(this);
+  }
+
+  /**
+   * Adds a Shape to this CompositeShape.
+   * @param newshape 	the Shape to be added
+   * @param index 	the index position to put the Shape 
+   */ 
+  public SilShape add(SilShape newshape, int index) {
+    newshape.setParent(this);
+    invalidate();
+    shapes.insertElementAt(newshape, index);
+    return(this);
+  }
+
+  /**
+   * Adds a Shape to this CompositeShape.
+   * @param newshape 	the Shape to be added
+   * @param shapename 	the name to be given to this Shape
+   */
+  public SilShape add(SilShape newshape, String shapename) {
+    newshape.setParent(this);
+    invalidate();
+    newshape.setName(shapename);
+    shapes.addElement(newshape);
+    return(this);
+  }
+
+  /**
+   * Adds a Shape to this CompositeShape.
+   * @param newshape 	the Shape to be added
+   * @param shapename 	the name to be given to this Shape
+   * @param index 	the index position to put the Shape
+   */
+  public SilShape add(SilShape newshape, String shapename, int index) {
+    newshape.setParent(this);
+    invalidate();
+    newshape.setName(shapename);
+    shapes.insertElementAt(newshape, index);
+    return(this);
+  }
+
+  /**
+   * Removes a Shape from this CompositeShape.
+   * @return true if the composite object contains the shape, false otherwise
+   */
+  public SilShape remove(SilShape delshape) {
+    if (shapes.remove (delshape)) {
+      delshape.setParent(null);
+      invalidate();
+    }
+    return this;
+  }
+
+  /**
+   * Removes all Shapes from this CompositeShape.
+   */    
+  public void removeAll() {
+    shapes.removeAllElements();
+  }
+
+  /**
+   * draws the CompositeShape by calling the DisplayManager's display method.
+   * This method should never be called
+   * directly by an application. To get a composite shape to appear on the
+   * screen, either add it to a Silhouette canvas or to a composite shape 
+   * that has been added to a Silhouette canvas.
+   */
+  public void draw(Graphics2D g) {
+    if(getVisible()) {
+	if ((silhouette.globals.DebugLevel >= 1) && getWidth() < 0)) {
+	    System.out.println("Warning: The width of the composite shape named " + this + " is less than 0.");
+	    System.out.println("You probably want to either set the width explicitly or add a constraint");
+	    System.out.println("that computes the width");
+	}
+	if ((silhouette.globals.DebugLevel >= 1) && (getHeight() < 0)) {
+	    System.out.println("Warning: The height of the composite shape named " + this + " is less than 0.");
+	    System.out.println("You probably want to either set the height explicitly or add a constraint");
+	    System.out.println("that computes the height");
+	}
+
+      // create a new coordinate system based on this composite object's
+      // coordinate system
+      //      new_g = g.create((int)getLeft(), (int)getTop(), (int)getWidth() + 1, 
+      //		       (int)getHeight() + 1);
+
+      g.translate((int)getLeft(), (int)getTop());
+      dispman.display(g);
+      g.translate(-(int)getLeft(), -(int)getTop());
+      validate();
+    }
+  }
+
+  /**
+   * draws the CompositeShape by calling the DisplayManager's redisplay 
+   * method.
+   */
+  public void refresh(Graphics2D g) {
+    if(getVisible()) {
+      g.translate((int)getLeft(), (int)getTop());
+      dispman.redisplay(g);
+      validate();
+    }
+  }
+
+  /**
+   * Returns the current DisplayManager variable.
+   */  
+  public DisplayManager getDisplay() {
+    return(dispman);
+  }
+
+  /**
+   * Sends the specified Shape to the back of the CompositeShape's area.
+   * @return true if the composite object contains the shape, false otherwise
+   */
+  public boolean sendToBack(SilShape moveshape) {
+    int index;
+    index = this.getShapeIndex(moveshape);
+
+    if (index >= 0) {
+      shapes.removeElementAt(index);
+      shapes.insertElementAt(moveshape, 0);
+      return true;
+    }
+    else
+      return(false);
+  }
+
+  /**
+   * Brings the specified Shape to the front of the CompositeShape's area.
+   * @return true if the composite object contains the shape, false otherwise
+   */
+  public boolean bringToFront(SilShape moveshape) {
+    int index;
+    index = this.getShapeIndex(moveshape);
+
+    if (index >= 0) {
+      shapes.removeElementAt(index);
+      shapes.addElement(moveshape);
+      return true;
+    }
+    else
+      return false;
+  }
+
+  /**
+   * Gets a reference to the specified Shape.
+   * @return A reference to the shape if it is found, null otherwise
+   */
+  public SilShape getShape(String shapename) {
+    int index;
+    index = getShapeIndex(shapename);
+    if(index > -1) {
+      return( (SilShape)shapes.elementAt(index) );
+    } else {
+      return(null);
+    }
+  }
+
+  /**
+   * Gets the index of the specified Shape.
+   * @return The index of the shape if found, -1 otherwise
+   */
+  protected int getShapeIndex(String shapename) {
+    int shape_cnt;
+    int i;
+    SilShape cur_shape;
+
+    shape_cnt = shapes.size();  
+    for(i = 0; i < shape_cnt; i++) {
+      cur_shape = (SilShape)shapes.elementAt(i);
+      if(cur_shape.getName().equals(shapename)) {
+        return(i);
+      }
+    }
+    return(-1);
+  }
+
+  /**
+   * Gets the index of the specified Shape.
+   * @return The index of the shape if found, -1 otherwise
+   */
+  public int getShapeIndex(SilShape target) {
+    return( shapes.indexOf(target) );
+  }
+
+  /**
+   * Locates the Shape at the given x, y position.
+   * @return A Shape if found, null otherwise.
+   */
+  public SilShape find(double x, double y) {
+    SilShape candidateShape = null;
+    SilShape tempShape;
+    Enumeration shapeIter = this.getShapes();
+
+    // translate coordinates so that they conform to the relative coordinates
+    // of this composite shape
+    double translatedX = x - getLeft();
+    double translatedY = y - getTop();
+
+    while (shapeIter.hasMoreElements()) {
+      tempShape = (SilShape)shapeIter.nextElement();
+      if (tempShape.contains(translatedX, translatedY)) {
+        candidateShape = tempShape;
+      }
+    }
+
+    return(candidateShape);
+  }
+
+  /**
+   * Locates the leaf object in the composite object hierarchy that
+   * is at the given x, y position.
+   * @return A Shape if found, null otherwise.
+   */
+  public SilShape findLeaf(double x, double y) {
+    SilShape candidateShape = find(x, y);
+
+    if (candidateShape != null) {
+      SilShape childShape = candidateShape.findLeaf(x - this.getLeft(), 
+        y - this.getTop());
+      if (childShape != null)
+        return childShape;
+      else
+        return candidateShape;
+    }
+    return(candidateShape);
+  }
+
+  /**
+   * find all the shapes in the composite object hierarchy that contain
+   * the given (x,y) point
+   * @param When findShapes is finished, foundShapes will contain a stack
+   *   of shapes that contain the given (x,y) point
+   */
+  public void findShapes(int x, int y, Stack foundShapes) {
+    SilShape candidateShape = null;
+    SilShape tempShape;
+    Enumeration shapeIter = this.getShapes();
+
+    // translate coordinates so that they conform to the relative coordinates
+    // of this composite shape
+
+    int translatedX = x - (int)this.getLeft();
+    int translatedY = y - (int)this.getTop();
+
+    foundShapes.push(this);
+    while (shapeIter.hasMoreElements()) {
+      tempShape = (SilShape)shapeIter.nextElement();
+      if (tempShape.contains(translatedX, translatedY)) {
+        candidateShape = tempShape;
+      }
+    }
+    if (candidateShape != null)
+      candidateShape.findShapes(translatedX, translatedY, foundShapes);
+  }
+
+  /**
+   * returns an iterator that can be used to iterate through all the
+   * shapes contained in this composite object
+   */
+  public Enumeration getShapes () {
+    return shapes.elements();
+  }
+
+  /**
+   * Changes the size of the CompositeShape and the shapes within it.
+   * A CompositeShape cannot be resized to be smaller than 10x10.
+   */
+  /*
+     public void reshape(double x_in, double y_in, double width_in, double height_in) {
+     if(width_in < 10) {
+     width_in = 10;
+     }
+
+     if(height_in < 10) {
+     height_in = 10;
+     }
+
+     bounds.x = x_in;
+     bounds.y = y_in;
+
+     if( (width_in != bounds.width) || (height_in != bounds.height) ) {
+     float wscale = (float)width_in/bounds.width;
+     float hscale = (float)height_in/bounds.height;
+
+     Shape curshape;
+     Rectangle bbox;
+     int shape_cnt = shapes.size();
+     int i;
+
+     for(i = 0; i < shape_cnt; i++) {
+     curshape = (SilShape)shapes.elementAt(i);
+     bbox     = curshape.getBounds();
+
+     curshape.reshape( (double)(bbox.x * wscale), (double)(bbox.y * hscale), (double)(bbox.width * wscale), (double)(bbox.height * hscale) );
+     }
+
+     bounds.width  = width_in;
+     bounds.height = height_in;
+     }
+
+  invalidate();
+}
+*/
+} 

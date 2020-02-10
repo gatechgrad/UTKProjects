@@ -1,0 +1,422 @@
+<!doctype html public "-//w3c//dtd html 4.0 transitional//en">
+<html>
+<head>
+   <meta http-equiv="Content-Type" content="text/html; charset=iso-8859-1">
+   <meta name="GENERATOR" content="Mozilla/4.76 [en] (X11; U; Linux 2.4.2-2 i686) [Netscape]">
+</head>
+<body>
+
+<center>
+<h1>
+The Silhouette Language</h1></center>
+
+<center>
+<h2>
+Design Document</h2></center>
+
+<center>
+<h2>
+June 4, 2001</h2></center>
+The following notational conventions are used throughout this design document:
+<h2>
+Notation</h2>
+
+<ol>
+<li>
+Nonterminal symbols are denoted by italics with the first letter of the
+nonterminal capitalized (e.g., <i>SilObject</i>).</li>
+
+<li>
+Terminal symbols, operator symbols, and keywords are denoted by boldface
+(e.g., <b>identifier</b>).</li>
+
+<li>
+<tt>&lt;...><sup>*</sup></tt> means zero or more occurrences of the item
+in angular braces. <tt>a<sup>*</sup></tt> means zero or more occurrences
+of <tt>a</tt>.</li>
+
+<li>
+<tt>&lt;...><sup>+</sup></tt> means one or more occurrences of the item
+in angular braces. <tt>a<sup>+</sup></tt> means one or more occurrences
+of <tt>a</tt>.</li>
+
+<li>
+<tt>&lt;...>?</tt> means zero or one occurrences of the item in angular
+braces. <tt>a?</tt> means zero or one occurrences of <tt>a</tt>.</li>
+</ol>
+
+<h2>
+Sample Program</h2>
+Here is a sample object declaration:
+<h3>
+Sample Declaration</h3>
+
+<pre>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; class LabeledBox extends CompositeShape {
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; left = 10;
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; top = 20;
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; width = formula label.width + 10;
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; height = formula label.height + 10;
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; string value = "foo";
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; RectShape readonly fromObj;
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; protected static Bounds bbox = new bbox(10, 30, 40, 50);
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; part frame extends RectangleShape {
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; left = 0;
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; top = 0;
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; width = formula parent.width;
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; height = formula parent.height;
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; begin java
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; bbox getBbox() {
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; return new bbox(getLeft(), getTop(), getWidth(), getHeight());
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; }
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; end java
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; }
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; part label extends TextShape {
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; left = pformula centerX(parent);
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; top = pformula centerY(parent);
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; text = formula parent.value;
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; }
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; begin java
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; LabeledBox(string v, int l, int t, RectShape obj) {
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; value.setValue(v);
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; left.setValue(l);
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; top.setValue(t);
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; fromObj.setValue(obj);
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; }
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; bbox getFrameBbox() {
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; return getFrame().getBbox();
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; }
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; end java
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; }</pre>
+
+<h2>
+Grammer</h2>
+
+<pre><i>ObjectFile</i> --> <i>Preamble</i> <i>SilObject
+
+Preamble</i> --> <i>PackageStmt</i>? <i>ImportStmt</i><sup>*
+
+</sup><i>PackageStmt</i> --> <b>package</b> <i>Name</i> ;
+
+<i>ImportStmt</i> --> <b>import</b> <i>ImportName</i> ;
+
+<i>SilObject</i> --> <i>Access?<b> </b></i><b>class</b> <b>identifier</b> <b>extends name </b>{ <i>ObjectBody }</i></pre>
+
+<pre><i>ObjectBody --> PredefinedProperty</i><sup>*</sup> <i>NewProperty</i><sup>* </sup><i>Part</i><sup>*</sup> <i>Methods
+
+PredefinedProperty</i> --> <b>identifier</b> = <i>Value</i> ;
+
+<i>NewProperty</i> --> <i>Access</i> <b>static</b>? <b>readonly</b>? <i>Type</i> <b>identifier</b>;
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; |&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; <i>Access</i> <b>static</b>? <b>readonly</b>? <i>Type</i> <b>identifier</b> = <i>Value</i> ;
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+
+<i>Type</i> -->&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; <b>int
+</b>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; |&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; <b>long
+</b>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; |&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; <b>float
+</b>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; |&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; <b>double
+</b>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; |&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; <b>boolean
+</b>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; |&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; <b>char
+</b>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; |&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; <b>string
+</b>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; |&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; <i>Name
+
+Access</i>&nbsp; -->&nbsp;&nbsp;&nbsp;&nbsp; <b>public
+</b>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; |&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; <b>protected
+</b>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; |&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; <b>private
+
+</b><i>Value</i>&nbsp;&nbsp; -->&nbsp;&nbsp;&nbsp;&nbsp; <b>integer
+</b>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; |&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; <b>realnumber
+</b>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; |&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; <b>true
+</b>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; |&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; <b>false
+</b>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; |&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; <b>textstring
+</b>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; |&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; <b>character
+</b>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; |&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; <b>formula</b> &lt;<i>Name</i> | <b>*</b> ><sup>+</sup> ;
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; |&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; <b>pformula</b> <i>Name</i> <b>(</b> <i>ArgumentList</i> <b>)
+</b>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; |&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; *
+
+<i>Part</i>&nbsp;&nbsp;&nbsp; -->&nbsp;&nbsp;&nbsp;&nbsp; <b>part</b> <b>identifier</b> <b>extends</b> <b>identifier</b> { <i>ObjectBody</i> }
+
+<i>Methods</i> -->&nbsp;&nbsp;&nbsp;&nbsp; <b>begin java</b> * <b>end java
+
+</b><i>ArgumentList</i> --> <b>empty</b>&nbsp;&nbsp; (i.e., no arguments)
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; |&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; <i>Argument</i> &lt;, <i>Argument</i>><sup>*
+
+</sup><i>Argument</i> -->&nbsp; <i>Name
+</i>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; |&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; *
+
+<i>Name</i>&nbsp;&nbsp;&nbsp; -->&nbsp;&nbsp;&nbsp;&nbsp; <b>identifier
+</b>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; |&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; <i>DottedName
+
+DottedName</i> -->&nbsp; <b>identifier</b>&lt;.<b>identifier</b>><sup>+
+
+</sup><i>ImportName</i> --> <i>Name
+</i>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; |&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; <b>identifier</b>&lt;.<b>identifier</b>><sup>+</sup>.*</pre>
+
+<h2>
+Lexical Syntax</h2>
+The Silhouette language observes the following lexical conventions:
+<ol>
+<li>
+Identifiers are unlimited sequences of letters, numbers, and the underscore
+(`_') character. They must begin with a letter:</li>
+
+<ul>
+<li>
+<b>letter</b>: [a-z] | [A-Z]</li>
+
+<li>
+<b>digit</b>: [0-9]</li>
+
+<li>
+<b>alpha</b>: letter | digit | _</li>
+
+<li>
+<b>identifier</b>: letter alpha<sup>*</sup></li>
+</ul>
+
+<li>
+Numbers are unsigned quantities of one or more digits. A negative number
+can be constructed using the unary `-' operator:</li>
+
+<ul>
+<li>
+<b>integer</b>: digit<sup>+</sup></li>
+
+<li>
+<b>realnumber</b>: digit<sup>+</sup>.digit<sup>+</sup></li>
+</ul>
+
+<li>
+An asterisk (*) by itself represents anything. For example, the meaning
+of the production:</li>
+
+<pre>&nbsp;&nbsp;&nbsp;&nbsp; <i>Value</i> --> <b>formula</b> &lt;<i>name</i> | <b>*</b> ><sup>*</sup> ;</pre>
+is that after the formula, we can have any number of occurences of a name,
+or anything else. Anything else in this case would be operator symbols,
+like <tt>+</tt>, or punctuation, like parentheses.</ol>
+
+<h2>
+File Setup</h2>
+
+<ol>
+<li>
+Each object declaration should result in the creation of a new java file.
+The file should be named after the object. For example, if the object is
+named LabeledBox, then the file should be named LabeledBox.java.</li>
+
+<li>
+All top-level objects should be declared to extend CompositeShape.</li>
+
+<li>
+The parts should be declared as inner classes in the top-level object's
+file. For example, if Frame and Label are LabeledBox's parts, then Frame
+and Label should be declared as inner classes of LabeledBox.</li>
+
+<li>
+If the parts themselves have sub-parts, then those sub-parts should be
+declared as inner classes of the part to which they belong.</li>
+</ol>
+
+<h2>
+Initialization</h2>
+
+<ol>
+<li>
+All the code for establishing constraints and setting up the parent and
+children links will be placed in an object's initialization block (the
+initialization block is the unnamed code that goes between {}'s and which
+is called before any constructor is called). By placing the code in this
+block, the user is free to write as many constructors as they like and
+can assume that all properties have been initialized before the constructor
+is executed.</li>
+
+<li>
+The initialization code should create an instance of each of the object's
+parts. Each part should be added to the object. The add method allows a
+part to be given a string name. You should provide a string name which
+is the same as the name the user gave to the part. For example, the Frame
+part would be added to the labeled box using the following piece of code:</li>
+
+<pre>add(new Frame(), "Frame");</pre>
+
+<li>
+After all the parts have been created, the initialization block should
+add constraints. The code for creating and adding constraints is described
+in the Formulas section.</li>
+</ol>
+
+<h2>
+Properties</h2>
+
+<ol>
+<li>
+There are two types of properties: 1) predefined properties, and 2) new
+properties. Predefined properties are properties that are already declared
+by the object's superclass. New properties are properties that are being
+added to this object. For example, if a part is declared to be a rectangle,
+then left and top would be examples of predefined properties while a property
+called "value" would be a new property.</li>
+
+<li>
+Predefined properties must be assigned a value. Since predefined properties
+already have their access defined by the superclass, it is impermissible
+to declare new access rights in the object. Hence the only thing that can
+be provided for a predefined property is a value.</li>
+
+<li>
+New properties must be assigned a type and may or may not be assigned a
+value. If they are not assigned a value, they should be given a default
+value. Here are the default values to use:</li>
+
+<ol>
+<li>
+integer: 0</li>
+
+<li>
+real number: 0.0</li>
+
+<li>
+string: ""</li>
+
+<li>
+character: a</li>
+
+<li>
+boolean: true</li>
+
+<li>
+non-primitive type: null</li>
+</ol>
+
+<li>
+All new properties should be declared to be various types of silhouette
+properties. Currently the following silhouette properties are defined:</li>
+
+<ol>
+<li>
+booleanProperty</li>
+
+<li>
+colorProperty</li>
+
+<li>
+doubleProperty</li>
+
+<li>
+fontProperty</li>
+
+<li>
+intProperty</li>
+
+<li>
+objectProperty</li>
+
+<li>
+stringProperty</li>
+</ol>
+The mappings of primitive types to these properties should be obvious.
+Object types should be mapped to the objectProperty. The constructor for
+a silhouette property takes three parameters: 1) a string denoting the
+name of the property, 2) a value for the property, and 3) a pointer to
+the object that contains the property (you can always pass the "this" pointer).
+Here are two sample property declarations and how they should be converted
+by the parser:
+<pre>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; int left = 10;
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; RectangleShape fromObj = new RectangleShape();</pre>
+should be converted to:
+<pre>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; intProperty left = new intProperty("left", 10, this);
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; objectProperty fromObj = new objectProperty("fromObj",
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; new RectangleShape(),
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; this);</pre>
+If the property is initialized with a formula, then the formula needs to
+be added to the object in the object's constructor. Formulas are discussed
+later in this design document.
+<li>
+All properties are declared as protected unless the private access modifier
+is used, in which case the property is declared as private.</li>
+
+<li>
+All properties should have two accessor methods: a get accessor method
+that returns the property's value and a set accessor method that sets the
+property's value.</li>
+
+<ul>
+<li>
+The protection levels on these methods (public, protected, private, or
+package) is determined by the accessor keyword.</li>
+
+<li>
+The names of these methods should be obtained by taking the name of the
+property, capitalizing the first letter of the property, and appending
+the resulting name to "get" and "set". For example, a property named left
+would have accessor methods named getLeft and setLeft.</li>
+
+<li>
+The get method's return type should be the declared type of the property.
+For example, if the property is declared to be an int, then the get method
+should return an int.</li>
+
+<li>
+Since every property is a SilProperty, every get method needs to call the
+SilProperty's getValue method to get the property's value. For example,
+if the left property is an int, then the get method should look as follows:</li>
+
+<pre>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; public double getLeft() {
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; return left.getValue();
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; }</pre>
+If the property's type is an object type, then the returned value should
+be coerced to the appropriate type. For example, if the fromObj property
+is defined to be of type LineShape, then the get method should look as
+follows:
+<pre>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; public LineShape getFromObj() {
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; return (LineShape)fromObj.getValue();
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; }</pre>
+
+<li>
+Since every property is a SilProperty, every set method needs to call the
+SilProperty's setValue method. For example, if the left property is an
+int, then the set methoud should look as follows:</li>
+
+<pre>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; public SilShape setLeft(double value) {
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; left.setValue(this, value);
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; return this;
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; }</pre>
+Note that the set methods always return a pointer to the object whose property
+is being set.
+<li>
+The <b>readonly</b> keyword determines whether the property is both readable
+and writeable by the application, or only readable. Properties are always
+readable and writeable by the class. If a property is declared readonly
+and is also declared public, then its get method should be declared public
+but its set method should be declared protected.</li>
+</ul>
+</ol>
+
+<h2>
+Formulas</h2>
+
+<ol>
+<li>
+Every formula of the form:</li>
+
+<pre>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; type propertyName = formula code;</pre>
+needs to be converted to a function of the form:
+<pre>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; addConstraint(new constraint () {
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; public void formula(constrainedObject self) {
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; <b>setPropertyName</b>(<b>code</b>);
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; }
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; });</pre>
+The things that vary for each formula are shown in bold face. The setPropertyName
+should be replaced with the set method for the property and the code should
+be placed in the code section. For example, the declaration:
+<pre>&nbsp;
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; int left = formula parent.width / 2 - width / 2;</pre>
+should be converted to:
+<pre>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; addConstraint(new constraint () {
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; public void formula(constrainedObject self) {
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; setLeft(getParent().getWidth() / 2 - getWidth() / 2);
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; }
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; });</pre>
+Notice that the self parameter is ignored. For the time being just accept
+that the parameter is ignored and include it in the formula header.</ol>
+
+</body>
+</html>

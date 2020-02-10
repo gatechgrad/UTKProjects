@@ -1,0 +1,200 @@
+<!doctype html public "-//w3c//dtd html 4.0 transitional//en">
+<html>
+<head>
+   <meta http-equiv="Content-Type" content="text/html; charset=iso-8859-1">
+   <meta name="GENERATOR" content="Mozilla/4.76 [en] (X11; U; Linux 2.4.2-2 i686) [Netscape]">
+</head>
+<body>
+
+<center>
+<h1>
+<b>CS594--Lab 8</b></h1></center>
+
+<center>
+<h1>
+<b>Thermometer Application</b></h1></center>
+
+<center>
+<hr WIDTH="100%"></center>
+
+<p>Redo lab6 using Java2D objects to draw your thermometer. Every object
+you draw must either be a Java2D object or a TextLayout object. Recall
+from lab 6 that you
+<br>added the following functionality to the thermometer:
+<ol>
+<li>
+Instead of labels representing the minimum and maximum values for the thermometer,
+you should now have 5 evenly spaced tickmarks going from the minimum to
+the maximum value. This means that you will have one tickmark at the minimum
+and maximum values and three tick marks inbetween. The tickmarks should
+have a dash and a label as demonstrated in the example program. 
+You should draw the
+labels using the TextLayout class and the dashes using the Line2D class.</li>
+
+<li>
+You should add a control handle to the top of the mercury that allows a
+user to move the mercury up and down. The text label indicating the current
+value of the mercury needs to move up and down as well and reflect the
+updated value. This text label must be drawn using the TextLayout object
+while the mercury should be drawn using a Rectangle2D object.</li>
+
+<li>
+You do <i>not </i>have to allow the user to edit the current value label
+for this lab.</li>
+</ol>
+Additionally you must add the following additional functionality to your
+thermometer:
+<ol>
+<li> Java 2D graphics make it much easier to center the thermometer object.
+Therefore the thermometer object should meet the following
+specifications for this lab:
+<p>
+<ul>
+<li> The thermometer object should be initially centered in the window
+and should occupy 3/4 of the height of the window. 
+<li> The frame width should be 1/15 the height of the thermometer frame.
+<li> The thermometer frame should be 1.1 times the height of the metered
+portion of the thermometer (i.e., the visible portion of the 
+"stem" should be .1 times the height
+of the metered portion of the thermometer).
+<li> The top of the bulb should be attached to the bottom of the thermometer
+frame (the stem should extend to the middle of the bulb to prevent any gaps 
+from appearing). 
+<li> The bulb diameter should be 3 times the width of the frame.
+</ul>
+<p>
+<li>
+If the user drags the mouse cursor while it is in the bounding box of
+the entire thermometer object and the left mouse button is down, then
+the thermometer should move with the mouse cursor.</li>
+<li>
+If the user presses down with the left mouse button anywhere in the thermometer,
+8 selection handles should appear around the boundary of the thermometer 
+object. To keep the selection handles from bouncing back and forth as
+the thermometer value grows and shrinks, make the right side of the 
+thermometer object be the right side of the bulb rather than the maximum
+of the right side of the bulb and the temperature label. </li>
+
+
+<li>
+If the user clicks the left mouse button outside the thermometer, the selection
+handles should disappear.</li>
+
+<li>
+If the user presses on a selection handle with the left mouse button, the
+thermometer should be scaled about the center of the object. That means that
+the other side of the object will not be pinned but will be scaled as
+well. It is okay if the
+selection handles also get scaled.</li>
+
+<li>
+Add a second panel to your frame that controls the rotation of the 
+thermometer. This panel should be added to the top (North) of your
+frame. Initially a horizontal line will appear in this panel along with
+a value denoting the current angle. The angle should be initially 0.
+When the user drags with the mouse in this window, the line should follow
+the mouse and sweep out a pie-shaped arc that is colored red. The text
+label should be updated to reflect the current angle, in <i>degrees</i>.
+You will need to use an Arc2D object with a PIE type. Unlike other Java
+2D objects arcs use degrees. In order to calculate the degrees, you should
+first convert your point to radians using the Math class's <tt>atan2</tt>
+method and then convert the radians to degrees using the Math class's
+<tt>toDegrees</tt> method. The <tt>atan2</tt> method returns a value between
+-pi and pi while the arc needs an angle between 0 and 360 degrees so you
+will have to do some work to make the necessary degree conversion even
+after using the <tt>toDegrees</tt> method. You should use the angle that
+you compute in radians as your rotation angle for the thermometer. The
+thermometer should rotate as you drag the mouse in the rotate panel. To
+ensure that this rotation happens, make sure that the mouse listener method
+that you use calls repaint on the thermometer panel.
+
+<br>&nbsp;</ol>
+
+<hr WIDTH="100%">
+<h2>
+Lab Requirements</h2>
+
+<ol>
+<li>
+All objects must be drawn using either Java2D objects or TextLayout objects.</li>
+
+<li>
+The bulb and the stem protruding from the bulb must be constructed using
+an Area object.</li>
+
+<li>
+The frame surrounding the rest of the thermometer must be constructed using a 
+General Path object, so that the bottom part of the frame is open (i.e., the
+frame and the area object should meet gracefully without any line crossing
+at the intersection point).</li>
+
+<li>
+The "metered portion" of the thermometer that extends from the minimum 
+temperature to the maximum temperature must be drawn in its own coordinate 
+system, which is degrees.
+Hence the bottom y value will be the thermometer's minimum temperature
+and the top y value will be the thermometer's maximum temperature. The
+x-coordinate system should start at 0 and I would recommend making the
+mercury start at x-coordinate 0, which means that the labels and tick marks
+will have negative x-values. 
+
+<li> The bulb/stem object can have its own coordinate system which starts
+at 0 and extends upward. The "metered" part of the thermometer should be
+transformed so that it can be drawn in the bulb/stem object's coordinate
+system.</li>
+
+<li>
+After the thermometer is first displayed, the thermometer's
+position and size depends on the user's actions. If the window is
+resized the thermometer should not be re-centered.</li>
+
+<li>
+You must use an AffineTransform to rotate, scale, and translate the thermometer
+to the appropriate location on the screen.</li>
+</ol>
+
+<hr WIDTH="100%">
+<h2>
+Submission</h2>
+Follow the submission guidelines for lab1
+<p>
+<hr WIDTH="100%">
+<h2>
+Example</h2>
+If you have questions about what your thermometer should look like or how
+it should respond to user input, run the example program that is called
+/home/bvz/cs594/labs/lab8/thermometerApplication. To run it you will need
+to type:
+<p>
+<pre>
+java lab8.thermometerApplication min max initial
+</pre>
+<p>
+where <tt>min, max,</tt> and <tt>initial</tt> should be the minimum,
+maximum, and initial values of the mercury. 
+<p>
+<hr WIDTH="100%">
+<h2>
+Hints</h2>
+
+<ol>
+<li>
+Converting y-values in thermometer coordinates into y-values in device
+coordinates. The quick answer is that if your temperature range is minValue
+to maxValue then you scale by -1 and translate by maxValue. For example,
+if maxValue is 100 and you have a point in temperature coordinates of 20,
+then multiply 20 by -1 to get -20 and add 100 to get 80 and that is your
+device coordinate for the point. The reason you scale by -1 is to flip
+the y-axis for your temperature coordinates so that instead of pointing
+up, it points down (effectively scaling by -1 reflects the y-axis about
+the x-axis). Once it points down, it points in the same direction as the
+coordinate axis for device coordinates. Once you've flipped the y-axis,
+the maxValue of 100 is at -100 in device coordinates. It's supposed to
+be at 0 in device coordinates, so you have to translate by 100 to get it
+to 0.</li>
+
+<br>&nbsp;
+<p>&nbsp;</ol>
+
+</body>
+</html>
