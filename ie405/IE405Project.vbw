@@ -1,0 +1,10 @@
+MainForm = 122, 201, 713, 645, C, 359, 406, 964, 928, C
+frmAbout = 110, 145, 701, 589, C, 85, 97, 676, 541, C
+frmExpectedServiceLife = 56, 290, 691, 857, C, 189, 174, 871, 744, C
+frmReplacementStudyApproaches = 0, 0, 0, 0, C, 10, -19, 745, 645, C
+Constants = 22, 108, 920, 552, C
+frmExpectedServiceLifeTMCOnly = 132, 174, 723, 618, C, 7, -6, 677, 593, C
+frmCIFCal = 158, 259, 939, 872, C, 22, 29, 675, 539, C
+frmICAESV = 166, 264, 815, 879, C, 256, 122, 905, 737, C
+frmStudyPeriodSpecified = 71, 228, 852, 841, C, 83, 38, 786, 551, C
+frmStartMenu = 220, 290, 1001, 903, C, 74, 44, 558, 421, C
