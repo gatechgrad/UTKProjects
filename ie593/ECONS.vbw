@@ -1,0 +1,9 @@
+Constants = 60, 134, 832, 699, C
+frmMain = 47, 206, 730, 818, C, 0, 9, 867, 705, C
+frmCashFlow = 180, 282, 868, 762, C, 16, 43, 866, 652, C
+frmCashFlowOptions = 301, 269, 823, 831, C, 86, 128, 623, 608, C
+frmCIFCal = 191, 259, 728, 739, C, 44, 44, 479, 494, C
+frmDepreciation = 70, 279, 732, 892, C, 22, 22, 703, 595, C
+frmReplacement = 35, 213, 897, 635, C, 22, 22, 857, 694, C
+frmGraph = 136, 281, 759, 897, C, 88, 88, 869, 727, C
+frmEvalAlternatives = 302, 264, 893, 880, C, 66, 66, 813, 682, C
